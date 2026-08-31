@@ -17,7 +17,7 @@ alone is roughly 39 000 tokens and will not fit alongside an engagement.
 
 | You need | File | Size | Open it when |
 |---|---|---|---|
-| **A framework, by name or by the question it answers** | [`frameworks.md`](frameworks.md) | ~17 600 tok | Default entry point. 48 cards, each self-contained — read the card, not the file |
+| **A framework, by name or by the question it answers** | [`frameworks.md`](frameworks.md) | ~17 600 tok | Default entry point. 53 cards, each self-contained — read the card, not the file |
 | **Whether a claim is sourced, and how well** | [`source-map.md`](source-map.md) | ~20 400 tok | Before asserting anything the client could challenge, and whenever a number needs attribution |
 | **A worked case, a weak→strong rewrite, or a named failure pattern** | [`examples.md`](examples.md) | ~6 300 tok | When output looks generic and you need a concrete before/after |
 | **The full argument, with the reasoning that produced the method** | [`target-audience-research-report.md`](target-audience-research-report.md) | ~39 200 tok | **Rarely.** Only when the method itself is being questioned or extended. Read one `§` by heading, never the file |
@@ -28,7 +28,7 @@ says what it says.
 
 ---
 
-## `frameworks.md` — 48 cards in 7 groups
+## `frameworks.md` — 53 cards in 7 groups
 
 | Group | Cards | Covers |
 |---|---|---|

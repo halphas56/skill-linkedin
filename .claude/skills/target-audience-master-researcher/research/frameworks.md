@@ -2,7 +2,7 @@
 
 **Condensed, operational summaries of every framework in the corpus.** Use this as a lookup during an engagement; use `target-audience-research-report.md` when you need the reasoning and `source-map.md` when you need the citation and its reliability.
 
-**Before using this file for the first time, read `../SYNTHESIS.md`.** These 48 cards are instruments, not a reading list — the synthesis explains what they are collectively for, which altitude each operates at, where three of them genuinely conflict, and which conclusions are corroborated across independent traditions rather than asserted by one author.
+**Before using this file for the first time, read `../SYNTHESIS.md`.** These 53 cards are instruments, not a reading list — the synthesis explains what they are collectively for, which altitude each operates at, where three of them genuinely conflict, and which conclusions are corroborated across independent traditions rather than asserted by one author.
 
 Each card: **What it is · Mechanics · Use when · Output · Watch out · Source.**
 

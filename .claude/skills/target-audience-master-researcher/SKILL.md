@@ -69,7 +69,7 @@ Find the audience that will pay, stay and spread — and prove it before anyone 
 
 ## Reference files
 
-**Thirteen knowledge files exist and a real engagement loads two or three.** Load by tier, not by browsing.
+**Fourteen knowledge files exist and a real engagement loads two or three.** Load by tier, not by browsing.
 
 ### Tier 0 — always
 
@@ -129,7 +129,7 @@ Find the audience that will pay, stay and spread — and prove it before anyone 
 | File | Load when |
 |---|---|
 | [`research/INDEX.md`](research/INDEX.md) | **Enter `research/` here.** The four files below total ~77k tokens and the report alone is ~39k — none of them fits alongside an engagement. The index routes you to a section without opening a file to look for it |
-| [`research/frameworks.md`](research/frameworks.md) | **Quick lookup mid-engagement.** 48 framework cards + a question→framework routing table |
+| [`research/frameworks.md`](research/frameworks.md) | **Quick lookup mid-engagement.** 53 framework cards + a question→framework routing table |
 | [`research/source-map.md`](research/source-map.md) | You need a source, its depth marker, reliability score or stated limitation |
 | [`research/target-audience-research-report.md`](research/target-audience-research-report.md) | You need the full reasoning, the taxonomies, or a citation |
 | [`research/examples.md`](research/examples.md) | You need a comparable — 15 weak→strong rewrites |

@@ -20,7 +20,7 @@ Given any offer — SaaS, course, agency, local business, consumer product, cons
 8. Tests the money separately: **Pain ≠ Demand ≠ Willingness to pay**, with the economic value of the problem quantified
 9. **Levels every claim L0–L6** and refuses to call anything validated without **3+ independent source types**
 10. Scores with the **TAS formula**, reported alongside gates, evidence level and assumption count
-11. Applies **five gates** that disqualify a segment regardless of its total score
+11. Applies **six gates** that disqualify a segment regardless of its total score
 12. Maps **exactly where each segment gathers** — named venues, ranked by over-index rather than raw share
 13. Builds a **citation-enforced avatar from real comments** — the only free source that contains non-buyers
 14. Judges whether they can be reached **for free**, with the required asset and time-to-signal
@@ -53,7 +53,7 @@ target-audience-master-researcher/          ← installed at .claude/skills/ —
 │   ├── INDEX.md                            ← question → file → section. Start here, not in the files below
 │   ├── target-audience-research-report.md  ← 2,200-line report, 10 sections
 │   ├── source-map.md                       ← ~75 sources, reliability-scored, EN + RU
-│   ├── frameworks.md                       ← 48 framework cards + question→framework routing
+│   ├── frameworks.md                       ← 53 framework cards + question→framework routing
 │   └── examples.md                         ← documented cases, 15 weak→strong rewrites, failure anatomies
 │
 ├── knowledge/                              ← the execution layer (how)
@@ -88,7 +88,7 @@ target-audience-master-researcher/          ← installed at .claude/skills/ —
 │
 ├── tests/                                  ← 12 of 13 briefs run in 2 rounds; 8 defects fixed
 │   ├── test-briefs.md                      ← 13 adversarial briefs, each with a documented trap
-│   ├── evaluation-rubric.md                ← 5 gates, 11 dimensions, 10 deductions
+│   ├── evaluation-rubric.md                ← 6 gates, 11 dimensions, 10 deductions
 │   ├── COLD-RUN.md                         ← 10-min kit: paste A to produce, paste B to score.
 │                                               NOT YET RUN COLD — the top open item
 │   └── run-log-*.md                        ← 6 logs: the structural audit, both rounds, the fixes,
