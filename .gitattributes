@@ -1,0 +1,8 @@
+# Normalise line endings so edits produce readable diffs regardless of
+# the platform a file was authored on. The skill was written on Windows
+# and arrived with mixed CRLF/LF; see
+# .claude/skills/target-audience-master-researcher/ANALYSIS.md §B1.
+* text=auto eol=lf
+
+# Binary — never touched by the text filter.
+*.pdf binary
