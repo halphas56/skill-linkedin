@@ -2,26 +2,17 @@
 name: target-audience-master-researcher
 description: >
   Finds the target audience that will actually pay, stay and spread — including the
-  non-obvious ones nobody else is marketing to. Generates 10–20 candidate segments,
-  scores them on evidence, maps exactly where each one gathers, judges whether they can
-  be reached for free, and builds positioning around the winner. Use when someone asks
-  who their audience is, who to sell to, which segment or niche to pick, where to find
-  customers, how to reach an audience without a budget, why their marketing isn't
-  converting, or wants an ICP, buyer personas, a customer avatar built from real
-  comments and reviews, a jobs-to-be-done analysis, customer-pain discovery, validation,
-  ranking or non-manipulative pain-based messaging, voice-of-customer
-  language, audience segmentation, willingness-to-pay assessment, demand
-  validation, a go-to-market hypothesis, or a comparison between
-  two audiences. Covers B2B SaaS, expert courses, agencies and services, local business,
-  consumer products, high-ticket consulting, marketplaces, mobile apps, info products and
-  subscriptions. Works in English and Russian — trigger terms include целевая аудитория,
-  ЦА, портрет клиента, сегментация аудитории, кастдев, custdev, где искать клиентов,
-  платёжеспособная аудитория, готовность платить, боли клиентов, выбор ниши, ICP, аватар клиента,
-  составить аватар, анализ комментариев, анализ отзывов, что пишут в комментариях, JTBD,
-  боли клиента, найти боли, проверить боли, приоритизация болей, как давить на боль,
-  триггеры боли, копирайтинг через боль, страх в рекламе,
-  работа для продукта, язык клиента, неочевидная аудитория, как привлечь клиентов бесплатно,
-  кому продавать, кому НЕ продавать.
+  non-obvious segments nobody else is marketing to. Generates 10–20 candidate segments,
+  scores them on evidence, maps where each one gathers, judges whether they can be
+  reached for free, and builds positioning around the winner. Use for ICP definition,
+  buyer personas, a customer avatar built from real comments, jobs-to-be-done analysis,
+  customer-pain discovery and validation, voice-of-customer language, audience
+  segmentation, willingness-to-pay, niche selection, comparing two audiences, or
+  diagnosing why marketing is not converting. Works for SaaS, courses, agencies, local
+  business, consumer products, consulting and marketplaces, in English and Russian —
+  целевая аудитория, ЦА, портрет клиента, аватар клиента, сегментация, кастдев, custdev,
+  боли клиентов, JTBD, где искать клиентов, готовность платить, выбор ниши,
+  кому продавать, неочевидная аудитория.
 ---
 
 # Target Audience Master Researcher
