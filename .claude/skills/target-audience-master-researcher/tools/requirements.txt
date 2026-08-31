@@ -1,0 +1,14 @@
+# Dependencies for tools/md2pdf.py
+#
+# Required - without this the script cannot render at all.
+markdown>=3.4
+
+# Optional - page numbers and the footer band. Without them the PDF is
+# still produced, just without numbering; the script says so and continues.
+pypdf>=3.0
+reportlab>=4.0
+
+# Not a pip dependency: rendering needs a Chromium-family browser
+# (Chrome, Chromium or Edge). The script finds it on the standard install
+# paths, on PATH, or in a Playwright/Puppeteer cache. Override with
+# CHROME_PATH=/path/to/chrome if it lives somewhere else.

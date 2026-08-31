@@ -33,34 +33,98 @@ from pathlib import Path
 try:
     import markdown
 except ImportError:
-    sys.exit("Missing dependency: pip install markdown")
+    sys.exit(
+        "Missing dependency 'markdown'.\n"
+        "  pip install -r tools/requirements.txt   (or: pip install markdown)\n"
+        "Optional, for page numbers: pypdf, reportlab."
+    )
+
+def _optional_import(loader, what):
+    """Run `loader`, returning None if the dependency is missing OR broken.
+
+    `except ImportError` is not enough. A native dependency can be installed
+    but unusable - pypdf pulls in `cryptography`, and a mismatched build makes
+    pyo3 raise PanicException, which derives from BaseException directly and
+    slips straight through `except Exception`. pyo3_runtime is not importable
+    until such an extension has loaded, so the class cannot be named up front.
+
+    Hence BaseException, with the two that must never be swallowed re-raised.
+    """
+    try:
+        return loader()
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except BaseException as exc:
+        print("  (%s unavailable - %s: %s)" % (what, type(exc).__name__, exc))
+        return None
+
 
 # ---------------------------------------------------------------- Chrome
 
 CHROME_CANDIDATES = [
+    # Windows
     r"C:\Program Files\Google\Chrome\Application\chrome.exe",
     r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
     r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
     r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    # Linux
     "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/opt/google/chrome/chrome",
     "/usr/bin/chromium",
     "/usr/bin/chromium-browser",
+    "/snap/bin/chromium",
+    "/usr/bin/microsoft-edge",
+    # macOS
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
 ]
+
+# Containers and CI images often ship a browser that is on no standard path and
+# not on PATH either - Playwright images are the common case. Look there too.
+BROWSER_ROOTS_ENV = ("PLAYWRIGHT_BROWSERS_PATH", "PUPPETEER_CACHE_DIR")
+BROWSER_GLOBS = (
+    "chromium*/chrome-linux/chrome",
+    "chromium*/chrome-linux/headless_shell",
+    "chromium*",
+    "chrome/*/chrome-linux64/chrome",
+)
 
 
 def find_chrome():
+    """Locate a Chromium-family binary, or return None.
+
+    Order: explicit override, known install paths, PATH, browser caches.
+    Returns None rather than exiting so the caller can still deliver the HTML.
+    """
+    # An explicit override always wins - the escape hatch for odd setups.
+    for var in ("CHROME_PATH", "CHROME_BIN", "MD2PDF_CHROME"):
+        p = os.environ.get(var)
+        if p and os.path.exists(p):
+            return p
+
     for p in CHROME_CANDIDATES:
         if os.path.exists(p):
             return p
-    for name in ("chrome", "google-chrome", "chromium", "msedge"):
+
+    for name in ("chrome", "google-chrome", "google-chrome-stable",
+                 "chromium", "chromium-browser", "msedge", "microsoft-edge"):
         found = shutil.which(name)
         if found:
             return found
-    sys.exit(
-        "No Chrome/Chromium/Edge found. Install one, or add its path to "
-        "CHROME_CANDIDATES in tools/md2pdf.py"
-    )
+
+    roots = [os.environ[v] for v in BROWSER_ROOTS_ENV if os.environ.get(v)]
+    roots += [os.path.expanduser("~/.cache/ms-playwright"),
+              os.path.expanduser("~/.cache/puppeteer")]
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        for pattern in BROWSER_GLOBS:
+            for hit in sorted(Path(root).glob(pattern), reverse=True):
+                if hit.is_file() and os.access(hit, os.X_OK):
+                    return str(hit)
+    return None
 
 
 # ---------------------------------------------------------------- CSS
@@ -296,11 +360,15 @@ STAMP_FONTS = [
 
 def _register_stamp_font():
     """Return a font name for the footer that can actually draw Cyrillic."""
-    try:
+    def _load():
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
-    except ImportError:
+        return pdfmetrics, TTFont
+
+    mods = _optional_import(_load, "reportlab fonts")
+    if mods is None:
         return "Helvetica"
+    pdfmetrics, TTFont = mods
     for path in STAMP_FONTS:
         if os.path.exists(path):
             try:
@@ -316,14 +384,18 @@ def stamp_page_numbers(pdf_path, label=""):
 
     Page 1 is the cover and is left clean.
     """
-    try:
+    def _load():
         from pypdf import PdfReader, PdfWriter
         from reportlab.pdfgen import canvas
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.colors import HexColor
-    except ImportError:
-        print("  (page numbers skipped - pypdf/reportlab not available)")
+        return PdfReader, PdfWriter, canvas, A4, HexColor
+
+    # Page numbers are optional; the PDF is not.
+    mods = _optional_import(_load, "page numbers")
+    if mods is None:
         return
+    PdfReader, PdfWriter, canvas, A4, HexColor = mods
 
     # ReportLab's built-in Helvetica has NO Cyrillic glyphs - a Russian footer
     # renders as solid black boxes. Register a real TrueType face, and fall back
@@ -394,7 +466,23 @@ def main():
     # Absolute: Path.as_uri() below refuses a relative path.
     html_path = os.path.splitext(out)[0] + ".html"
     Path(html_path).write_text(html, encoding="utf-8")
-    chrome_to_pdf(html_path, out, find_chrome())
+
+    # No browser is not a reason to lose the work. The HTML is already the
+    # fully styled deliverable - keep it, say so, and exit non-zero so a
+    # caller can tell a PDF was not produced.
+    chrome = find_chrome()
+    if chrome is None:
+        sys.exit(
+            "No Chrome/Chromium/Edge found, so no PDF was produced.\n"
+            "The styled HTML was kept and opens in any browser:\n"
+            "  %s\n"
+            "Print it to PDF from there, or point the script at a browser:\n"
+            "  CHROME_PATH=/path/to/chrome python tools/md2pdf.py ...\n"
+            "Searched: standard install paths, PATH, $PLAYWRIGHT_BROWSERS_PATH, "
+            "~/.cache/ms-playwright." % html_path
+        )
+
+    chrome_to_pdf(html_path, out, chrome)
     stamp_page_numbers(out, args.footer)
 
     if not args.keep_html:
