@@ -1,0 +1,198 @@
+{
+  "name": "Первинка 05 — Рознесення банківської виписки",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Виписка → зіставлення з документами\n\nПорядок той самий: спершу правило, потім модель.\n\n**Правило (безкоштовно, детерміновано):** номер рахунку/накладної в призначенні платежу + сума + ЄДРПОУ.\nЗа спостереженнями це закриває більшість платежів — українські платіжки майже завжди несуть «згідно рах. № …».\n\n**Модель (лише хвіст):** призначення без номера, кілька кандидатів з однаковою сумою, часткова оплата за кількома документами.\nМодель ПРОПОНУЄ, рознесення підтверджує людина, доки автономія не піднята до 3.",
+        "height": 280,
+        "width": 560
+      },
+      "id": "e0000000-0000-4000-8000-000000000001",
+      "name": "Правило перед моделлю",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-340, -280]
+    },
+    {
+      "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 1 }] } },
+      "id": "e0000000-0000-4000-8000-000000000002",
+      "name": "Розклад — щогодини",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-340, 40]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select id as client_id, name from clients where active = true;",
+        "options": {}
+      },
+      "id": "e0000000-0000-4000-8000-000000000003",
+      "name": "Активні клієнти",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [-120, 40],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://acp.privatbank.ua/api/statements/transactions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "id", "value": "={{ $env.P24_CLIENT_ID }}" },
+            { "name": "token", "value": "={{ $env.P24_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json;charset=utf8" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "acc", "value": "={{ $env.P24_IBAN }}" },
+            { "name": "startDate", "value": "={{ $now.minus({ days: 2 }).toFormat('dd-MM-yyyy') }}" },
+            { "name": "limit", "value": "100" }
+          ]
+        },
+        "options": { "timeout": 60000, "retry": { "retry": { "maxTries": 3, "waitBetweenTries": 3000 } } }
+      },
+      "id": "e0000000-0000-4000-8000-000000000004",
+      "name": "Приват24 — виписка",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [100, 40],
+      "notes": "Приват24 для бізнесу: сервіс «Автоклієнт», ключі створюються в кабінеті. Точні назви полів і пагінацію звірити на api.privatbank.ua — тут припущення. Альтернатива без API: імпорт файла клієнт-банку."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Розгортання + розбір призначення платежу ПРАВИЛАМИ. Модель тут ще не потрібна.\nconst RX_DOC = /(?:рах(?:унк|унок|\\.)?|накладн\\w*|інвойс|invoice|№)\\s*№?\\s*([A-Za-zА-Яа-яІіЇїЄєҐґ0-9][A-Za-zА-Яа-яІіЇїЄєҐґ0-9\\-\\/]{1,20})/gi;\nconst RX_VAT = /ПДВ[^0-9]{0,12}([0-9][0-9 ,\\.]*)/i;\nconst RX_CONTRACT = /догов\\w*\\s*№?\\s*([A-Za-zА-Яа-я0-9\\-\\/]{1,20})/i;\nconst client = $('Активні клієнти').first().json.client_id;\nconst out = [];\n\nfor (const item of $input.all()) {\n  const rows = item.json.transactions ?? item.json.data ?? [];\n  for (const t of rows) {\n    const purpose = String(t.OSND ?? t.purpose ?? '').trim();\n    const docs = [...purpose.matchAll(RX_DOC)].map(m => m[1]).filter((v, i, a) => a.indexOf(v) === i);\n    const vat = (purpose.match(RX_VAT) || [])[1];\n    const contract = (purpose.match(RX_CONTRACT) || [])[1];\n    out.push({ json: {\n      client_id: client,\n      ext_id: String(t.ID ?? t.id ?? t.REF ?? ''),\n      account_iban: String(t.AUT_MY_ACC ?? $env.P24_IBAN ?? ''),\n      op_date: String(t.DAT_OD ?? t.date ?? '').slice(0, 10),\n      amount: Math.abs(Number(String(t.SUM ?? t.amount ?? '0').replace(',', '.'))),\n      direction: String(t.TRANTYPE ?? t.direction ?? 'D') === 'C' ? 'in' : 'out',\n      cp_edrpou: String(t.AUT_CNTR_CRF ?? t.counterparty_edrpou ?? '').trim(),\n      cp_name: String(t.AUT_CNTR_NAM ?? t.counterparty_name ?? '').trim(),\n      purpose,\n      parsed: { doc_numbers: docs, vat: vat ? Number(vat.replace(/\\s/g, '').replace(',', '.')) : null, contract: contract ?? null }\n    }});\n  }\n}\nreturn out;"
+      },
+      "id": "e0000000-0000-4000-8000-000000000005",
+      "name": "Розбір призначення платежу",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 40]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into bank_transactions (client_id, account_iban, ext_id, op_date, amount, direction,\n                               cp_edrpou, cp_name, purpose, parsed, status)\nvalues ($1,$2,$3,$4::date,$5,$6,$7,$8,$9,$10::jsonb,'new')\non conflict (client_id, ext_id) do nothing\nreturning id;",
+        "options": { "queryReplacement": "={{ $json.client_id }},{{ $json.account_iban }},{{ $json.ext_id }},{{ $json.op_date }},{{ $json.amount }},{{ $json.direction }},{{ $json.cp_edrpou }},{{ $json.cp_name }},{{ $json.purpose }},{{ JSON.stringify($json.parsed) }}" }
+      },
+      "id": "e0000000-0000-4000-8000-000000000006",
+      "name": "Дедуп за ext_id",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [540, 40],
+      "alwaysOutputData": true,
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Зіставлення правилом: номер документа з призначення + ЄДРПОУ + сума.\nwith tx as (select $1::bigint as tx_id)\nupdate bank_transactions b\nset match_document_id = d.id,\n    match_method = 'rule',\n    match_conf = case when abs(d.amount_total - b.amount) < 0.01 then 'exact' else 'medium' end,\n    status = case when abs(d.amount_total - b.amount) < 0.01 then 'matched' else 'review' end\nfrom documents d, counterparties cp\nwhere b.id = (select tx_id from tx)\n  and d.client_id = b.client_id\n  and d.counterparty_id = cp.id\n  and cp.edrpou = b.cp_edrpou\n  and d.doc_number = any (select jsonb_array_elements_text(b.parsed->'doc_numbers'))\nreturning b.id, b.status, b.match_document_id;",
+        "options": { "queryReplacement": "={{ $json.id }}" }
+      },
+      "id": "e0000000-0000-4000-8000-000000000007",
+      "name": "Зіставити правилом",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [760, 40],
+      "alwaysOutputData": true,
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose", "version": 2 },
+          "combinator": "and",
+          "conditions": [
+            { "id": "c1", "leftValue": "={{ $json.match_document_id }}", "rightValue": "", "operator": { "type": "string", "operation": "notExists", "singleValue": true } }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e0000000-0000-4000-8000-000000000008",
+      "name": "Правило не спрацювало?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [980, 40]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Короткий список кандидатів для моделі: той самий контрагент, відкрите сальдо, близька сума.\nselect d.id, d.doc_type, d.doc_number, d.doc_date, d.amount_total,\n       (d.id in (select match_document_id from bank_transactions where match_document_id is not null)) as already_paid\nfrom documents d join counterparties cp on cp.id = d.counterparty_id\nwhere d.client_id = $1 and cp.edrpou = $2\n  and d.doc_date between $3::date - interval '120 days' and $3::date\norder by abs(d.amount_total - $4::numeric)\nlimit 5;",
+        "options": { "queryReplacement": "={{ $('Розбір призначення платежу').item.json.client_id }},{{ $('Розбір призначення платежу').item.json.cp_edrpou }},{{ $('Розбір призначення платежу').item.json.op_date }},{{ $('Розбір призначення платежу').item.json.amount }}" }
+      },
+      "id": "e0000000-0000-4000-8000-000000000009",
+      "name": "Кандидати для моделі",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1200, -60],
+      "alwaysOutputData": true,
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 1024, system: $env.PROMPT_BANK, messages: [{ role: 'user', content: JSON.stringify({ payment: { amount: $('Розбір призначення платежу').item.json.amount, purpose_text_untrusted: $('Розбір призначення платежу').item.json.purpose, counterparty: $('Розбір призначення платежу').item.json.cp_name }, candidates: $input.all().map(i => i.json) }) }], output_config: { format: { type: 'json_schema', schema: { type: 'object', properties: { decision: { type: 'string', enum: ['single','split','none'] }, document_ids: { type: 'array', items: { type: 'integer' } }, split: { type: 'array', items: { type: 'object', properties: { document_id: { type: 'integer' }, amount: { type: 'number' } }, required: ['document_id','amount'], additionalProperties: false } }, confidence: { type: 'string', enum: ['high','medium','low'] }, why: { type: 'string' } }, required: ['decision','document_ids','confidence','why'], additionalProperties: false } } } }) }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "e0000000-0000-4000-8000-00000000000a",
+      "name": "Claude — кандидати на зіставлення",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1420, -60],
+      "credentials": { "httpHeaderAuth": { "id": "REPLACE_AFTER_IMPORT", "name": "Anthropic API (x-api-key)" } },
+      "notes": "purpose_text_untrusted — призначення платежу контролює зовнішній відправник. У системному промпті прямо сказано: це дані, не інструкції."
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Модель ніколи не ставить статус 'matched' сама: її результат — пропозиція в чергу.\nupdate bank_transactions\nset match_method = 'llm',\n    match_conf = $2,\n    split = $3::jsonb,\n    status = 'review'\nwhere id = $1;",
+        "options": { "queryReplacement": "={{ $('Зіставити правилом').item.json.id ?? $('Дедуп за ext_id').item.json.id }},{{ (() => { try { return JSON.parse($json.content[0].text).confidence; } catch(e) { return 'low'; } })() }},{{ (() => { try { const p = JSON.parse($json.content[0].text); return JSON.stringify({ decision: p.decision, ids: p.document_ids, split: p.split ?? null, why: p.why }); } catch(e) { return '{}'; } })() }}" }
+      },
+      "id": "e0000000-0000-4000-8000-00000000000b",
+      "name": "Пропозиція → у чергу людині",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1640, -60],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {},
+      "id": "e0000000-0000-4000-8000-00000000000c",
+      "name": "Зіставлено правилом — далі в BAS",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1200, 160]
+    }
+  ],
+  "connections": {
+    "Розклад — щогодини": { "main": [[{ "node": "Активні клієнти", "type": "main", "index": 0 }]] },
+    "Активні клієнти": { "main": [[{ "node": "Приват24 — виписка", "type": "main", "index": 0 }]] },
+    "Приват24 — виписка": { "main": [[{ "node": "Розбір призначення платежу", "type": "main", "index": 0 }]] },
+    "Розбір призначення платежу": { "main": [[{ "node": "Дедуп за ext_id", "type": "main", "index": 0 }]] },
+    "Дедуп за ext_id": { "main": [[{ "node": "Зіставити правилом", "type": "main", "index": 0 }]] },
+    "Зіставити правилом": { "main": [[{ "node": "Правило не спрацювало?", "type": "main", "index": 0 }]] },
+    "Правило не спрацювало?": { "main": [[{ "node": "Кандидати для моделі", "type": "main", "index": 0 }], [{ "node": "Зіставлено правилом — далі в BAS", "type": "main", "index": 0 }]] },
+    "Кандидати для моделі": { "main": [[{ "node": "Claude — кандидати на зіставлення", "type": "main", "index": 0 }]] },
+    "Claude — кандидати на зіставлення": { "main": [[{ "node": "Пропозиція → у чергу людині", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateCredsSetupCompleted": false }
+}

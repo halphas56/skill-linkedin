@@ -1,0 +1,23 @@
+# HTTPS-термінація й доступ до n8n. Сертифікати Caddy отримує сам.
+{$N8N_HOST} {
+	encode zstd gzip
+
+	# Панель n8n — тільки за basic auth. Публічний доступ до UI недопустимий:
+	# у credentials лежать паролі до баз усіх клієнтів на обслуговуванні.
+	@ui not path /webhook/* /webhook-test/*
+	basic_auth @ui {
+		# згенерувати: docker run --rm caddy caddy hash-password --plaintext '<пароль>'
+		ok {$N8N_BASIC_AUTH_HASH}
+	}
+
+	reverse_proxy n8n:5678 {
+		header_up X-Real-IP {remote_host}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+	}
+}
