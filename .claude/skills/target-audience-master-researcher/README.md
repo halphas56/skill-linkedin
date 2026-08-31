@@ -41,70 +41,75 @@ It is deliberately built to **work on incomplete input**, to **distinguish "inte
 ## File map
 
 ```
-CA/
-├── README.md                                   ← you are here
-└── target-audience-master-skill/
-    ├── SKILL.md                                ← entry point + tiered routing
-    ├── SYNTHESIS.md                            ← READ FIRST: the one law, the altitude stack,
-    │                                              convergence & conflict maps, the 4-hour pass
-    ├── OPERATING-MANUAL.md                     ← the operating prompt: role, workflow, gates, critic, ethics
-    │
-    ├── research/                               ← the evidence layer (why)
-    │   ├── target-audience-research-report.md  ← 2,200-line report, 10 sections
-    │   ├── source-map.md                       ← ~75 sources, reliability-scored, EN + RU
-    │   ├── frameworks.md                       ← 48 framework cards + question→framework routing
-    │   └── examples.md                         ← documented cases, 15 weak→strong rewrites, failure anatomies
-    │
-    ├── knowledge/                              ← the execution layer (how)
-    │   ├── evidence-ladder.md                  ← THE CORE PROTOCOL: L0–L6, independence, triangulation
-    │   ├── jtbd-engine.md                      ← six-link chain, 3 dimensions, 4 forces, 5 Rings
-    │   ├── category-entry-points.md            ← finding audiences through situations; 7W + 3C
-    │   ├── market-mapping.md                   ← market definition by need, leverage junctions, micro-segments
-    │   ├── customer-profile.md                 ← jobs/pains/gains recorded completely, ranked and quantified
-    │   ├── pain-discovery.md                   ← is the pain real? 4 axes, 14 types, laddering + chains, EPPM
-    │   ├── pain-opportunity.md                 ← is it a business? cost of inaction, TWO scores, concentration
-    │   ├── voice-of-customer.md                ← 7 language types, verbatim discipline, swipe file
-    │   ├── willingness-to-pay.md               ← Pain ≠ Demand ≠ WTP; economic value estimation
-    │   ├── segment-generation-lenses.md        ← 30 generators + the Different-X transformation matrix
-    │   ├── interview-and-survey-kits.md        ← 8 verbatim scripts, EN + RU
-    │   ├── avatar-from-comments.md             ← building a sourced avatar from comments (≠ reviews)
-    │   ├── habitat-research-playbook.md        ← research stack, search recipes, over-index rule
-    │   └── ru-market-playbook.md               ← RU/CIS operations (in Russian)
-    │
-    ├── templates/
-    │   ├── scoring-matrix-template.md          ← the TAS formula + 19 diagnostic criteria, 12 presets
-    │   ├── segment-object-template.md          ← the 45-field handoff object + YAML for other skills
-    │   ├── pain-matrix-template.md             ← inventory, two scores + 2x2, the full Pain Card
-    │   ├── avatar-card-template.md             ← citation-enforced avatar, mandatory limitations statement
-    │   ├── positioning-template.md             ← 17 components, Dunford order, swap test
-    │   ├── research-output-template.md         ← the 14-section delivery contract + 7 shorter shapes
-    │   └── audience-brief-template.md          ← client intake form
-    │
-    ├── tests/                                  ← 12 of 13 briefs run in 2 rounds; 8 defects fixed
-    │   ├── test-briefs.md                      ← 13 adversarial briefs, each with a documented trap
-    │   ├── evaluation-rubric.md                ← 5 gates, 11 dimensions, 10 deductions
-    │   ├── run-log-2026-08-26.md               ← structural audit (examples stale, tests absent)
-    │   ├── run-log-2026-08-26-execution.md     ← the 7 runs and the 6 defects, as found
-    │   ├── run-log-2026-08-26-fixes.md         ← what was changed, and 3 re-tests
-    │   ├── COLD-RUN.md                         ← 10-min kit: paste A to produce, paste B to score
-    │   ├── run-log-2026-08-27.md               ← round 2: the remaining 6 briefs, T13 FAILED
-    │   └── run-log-2026-08-27-fixes.md         ← the enumeration trap, and the fix for it
-    │
-    ├── checklists/
-    │   ├── ideal-audience-checklist.md         ← 43 checks across 7 tiers, gates first
-    │   ├── red-flags-checklist.md              ← 38 failure patterns, severity-rated, with repairs
-    │   └── free-acquisition-checklist.md       ← 6-step decision procedure
-    │
-    └── examples/                               ← 6 worked engagements
-        ├── 00-reference-engagement.md          ★ THE STANDARD — a channel business, current
-        │                                         instrument set end to end. Imitate this one
-        ├── b2b-saas-example.md                 (EN) stated audience fails a gate
-        ├── expert-course-example.md            (RU) RU output conventions end to end
-        ├── agency-service-example.md           (EN) a gate-blocked segment handled correctly
-        ├── local-business-example.md           (RU) radius as the first segmentation axis
-        └── unexpected-audience-example.md      (EN) the discovery process, step by step
-             ↑ these five predate research passes 3–6; each ends with an explicit
-               "Delta to the current method" section. Read the delta.
+target-audience-master-researcher/          ← installed at .claude/skills/ — Claude Code finds it automatically
+├── SKILL.md                                ← entry point + tiered routing. The only file with frontmatter
+├── SYNTHESIS.md                            ← READ FIRST: the one law, the altitude stack, the two engines,
+│                                               the convergence & conflict maps, the four-hour pass
+├── OPERATING-MANUAL.md                     ← the operating prompt: role, workflow, gates, critic, ethics
+├── README.md                               ← you are here
+├── ANALYSIS.md                             ← packaging audit + the ordered work plan
+│
+├── research/                               ← the evidence layer (why). Tier 5 — consult, don't read
+│   ├── INDEX.md                            ← question → file → section. Start here, not in the files below
+│   ├── target-audience-research-report.md  ← 2,200-line report, 10 sections
+│   ├── source-map.md                       ← ~75 sources, reliability-scored, EN + RU
+│   ├── frameworks.md                       ← 48 framework cards + question→framework routing
+│   └── examples.md                         ← documented cases, 15 weak→strong rewrites, failure anatomies
+│
+├── knowledge/                              ← the execution layer (how)
+│   ├── evidence-ladder.md                  ← THE CORE PROTOCOL: L0–L6, independence, triangulation
+│   ├── jtbd-engine.md                      ← six-link chain, 3 dimensions, 4 forces, 5 Rings
+│   ├── category-entry-points.md            ← audiences through situations; 7W + 3C
+│   ├── market-mapping.md                   ← market by need, leverage junctions, micro-segments
+│   ├── customer-profile.md                 ← jobs/pains/gains recorded, ranked and quantified
+│   ├── pain-discovery.md                   ← is the pain real? 4 axes, 14 types, laddering, EPPM
+│   ├── pain-opportunity.md                 ← is it a business? cost of inaction, TWO scores
+│   ├── voice-of-customer.md                ← 7 language types, verbatim discipline, swipe file
+│   ├── willingness-to-pay.md               ← Pain ≠ Demand ≠ WTP; economic value estimation
+│   ├── segment-generation-lenses.md        ← 30 generators + the Different-X matrix
+│   ├── interview-and-survey-kits.md        ← 8 verbatim scripts, EN + RU
+│   ├── avatar-from-comments.md             ← a sourced avatar from comments (≠ reviews)
+│   ├── habitat-research-playbook.md        ← research stack, search recipes, the over-index rule
+│   └── ru-market-playbook.md               ← RU/CIS operations (in Russian)
+│
+├── templates/                              ← the output layer
+│   ├── scoring-matrix-template.md          ← the TAS formula + 19 criteria, 12 presets
+│   ├── segment-object-template.md          ← the 45-field handoff object + YAML
+│   ├── pain-matrix-template.md             ← inventory, two scores + 2x2, the full Pain Card
+│   ├── avatar-card-template.md             ← citation-enforced avatar, mandatory limitations
+│   ├── positioning-template.md             ← 17 components, Dunford order, swap test
+│   ├── research-output-template.md         ← the 14-section delivery contract + 7 shapes
+│   └── audience-brief-template.md          ← client intake form
+│
+├── checklists/
+│   ├── ideal-audience-checklist.md         ← 43 checks across 7 tiers, gates first
+│   ├── red-flags-checklist.md              ← 38 failure patterns, severity-rated, with repairs
+│   └── free-acquisition-checklist.md       ← 6-step decision procedure
+│
+├── tests/                                  ← 12 of 13 briefs run in 2 rounds; 8 defects fixed
+│   ├── test-briefs.md                      ← 13 adversarial briefs, each with a documented trap
+│   ├── evaluation-rubric.md                ← 5 gates, 11 dimensions, 10 deductions
+│   ├── COLD-RUN.md                         ← 10-min kit: paste A to produce, paste B to score.
+│                                               NOT YET RUN COLD — the top open item
+│   └── run-log-*.md                        ← 6 logs: the structural audit, both rounds, the fixes,
+│                                               and run-log-2026-08-27-cold.md — the control group, 18/33
+│
+├── examples/                               ← 6 worked engagements — constructed, never real case studies
+│   ├── 00-reference-engagement.md          ← ★ THE STANDARD. Current instrument set, end to end
+│   ├── b2b-saas-example.md                 ← (EN) stated audience fails a gate
+│   ├── expert-course-example.md            ← (RU) RU output conventions end to end
+│   ├── agency-service-example.md           ← (EN) a gate-blocked segment handled correctly
+│   ├── local-business-example.md           ← (RU) radius as the first segmentation axis
+│   └── unexpected-audience-example.md      ← (EN) the discovery process, step by step
+│                                               ↑ these five predate research passes 3–6; each ends with
+│                                                 "Delta to the current method". Read the delta.
+│
+├── tools/
+│   ├── md2pdf.py                           ← markdown → structured A4 PDF. The last step of every engagement
+│   └── requirements.txt                    ← `markdown` required; `pypdf`+`reportlab` for page numbers
+│
+└── reports/                                ← an example of a finished deliverable
+    └── 2026-08-27-cold-run.md / .pdf       ← the control-group run
 ```
 
 ---

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render a Markdown strategy document to a print-ready PDF.
 
-Usage:  python3 scripts/md2pdf.py <input.md> [output.pdf]
+Usage:  python3 scripts/strategy-md2pdf.py <input.md> [output.pdf]
 
 Uses Liberation Sans / DejaVu Sans Mono so Cyrillic renders correctly.
 """
@@ -162,7 +162,7 @@ def build(src: Path, out: Path) -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        sys.exit("usage: md2pdf.py <input.md> [output.pdf]")
+        sys.exit("usage: strategy-md2pdf.py <input.md> [output.pdf]")
     source = Path(sys.argv[1])
     target = Path(sys.argv[2]) if len(sys.argv) > 2 else source.with_suffix(".pdf")
     build(source, target)
