@@ -180,7 +180,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ai{
   display:inline-flex; align-items:center; gap:4px; padding:0 5px; height:16px; border-radius:3px;
   background:var(--ai-soft); color:var(--ai); border:1px solid color-mix(in srgb,var(--ai) 28%,transparent);
-  font:600 9.5px/1 var(--sans); letter-spacing:.06em; cursor:pointer; vertical-align:middle;
+  font:600 9.5px/1 var(--sans); letter-spacing:.06em; cursor:pointer; vertical-align:middle; user-select:none;
 }
 .ai:hover{filter:brightness(.95)}
 .ai::before{content:"◆"; font-size:7px}
@@ -701,7 +701,7 @@ function toast(html, undo) {
   setTimeout(kill, 6500);
 }
 function badge(map, key) { const [c, t] = map[key] || ["b-mute", key]; return `<span class="badge ${c}"><span class="dot"></span>${esc(t)}</span>`; }
-function aiMark(why) { return `<button type="button" class="ai" data-ai="${esc(why)}" title="Звідки це значення">AI</button>`; }
+function aiMark(why) { return `<span class="ai" role="button" tabindex="0" data-ai="${esc(why)}" title="Звідки це значення">AI</span>`; }
 function clientName(id) { const c = CLIENTS.find(c => c.id === id); return c ? c.name : "—"; }
 
 function stateBlock(kind, screen) {
@@ -1463,6 +1463,8 @@ document.addEventListener("keydown", e => {
     if (!overlay && S.screen === "verify") go("queue");
     return;
   }
+  const aiEl = e.target.closest && e.target.closest(".ai");
+  if (aiEl && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); e.stopPropagation(); openPop(aiEl, aiEl.dataset.ai); return; }
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
   if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && S.screen === "verify") { e.preventDefault(); return approvalGate(); }
   if (typing) return;

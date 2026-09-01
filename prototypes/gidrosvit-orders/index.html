@@ -1,0 +1,1548 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--ARTIFACT:BEGIN-->
+<title>Замовлення Гідросвіт</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* ==========================================================================
+   Замовлення — прототип обробки замовлень для оптової торгівлі
+   ДЕМОНСТРАЦІЙНИЙ РЕЖИМ: тестові дані, підключення до 1С/УНФ немає.
+   Палітра: глибокий бірюзовий на холодних нейтралях; зелений/бурштиновий/
+   червоний зарезервовані під статуси, фіолетовий — тільки під мітку AI.
+   ========================================================================== */
+:root{
+  --paper:#F1F4F4;
+  --surface:#FFFFFF;
+  --surface-2:#FAFCFC;
+  --sunken:#E7EDED;
+  --line:#D4DEDE;
+  --line-strong:#B3C2C2;
+  --ink:#12201F;
+  --ink-2:#455857;
+  --ink-3:#748685;
+  --accent:#0E6E7A;
+  --accent-soft:#DFEFF1;
+  --accent-ink:#0A525C;
+  --ok:#2E7D3A;    --ok-soft:#E5F2E6;
+  --warn:#96600F;  --warn-soft:#FBF1DC;
+  --crit:#B03430;  --crit-soft:#FAE8E6;
+  --ai:#6D4C9F;    --ai-soft:#EEE9F8;
+  --demo:#8A4B12;  --demo-soft:#FCEFE0;
+  --focus:#0E6E7A;
+  --r:6px;
+  --shadow:0 1px 2px rgba(18,32,31,.07), 0 10px 28px rgba(18,32,31,.09);
+  --sans:"Commissioner","Segoe UI",Roboto,Arial,sans-serif;
+  --mono:"JetBrains Mono","SF Mono",Consolas,monospace;
+  --serif:Georgia,"Times New Roman",serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1615; --surface:#152020; --surface-2:#1A2726; --sunken:#111A19;
+    --line:#263534; --line-strong:#394B4A;
+    --ink:#E3EBEA; --ink-2:#A2B3B2; --ink-3:#778987;
+    --accent:#48BCC7; --accent-soft:#0E3037; --accent-ink:#84D8E1;
+    --ok:#5CBF71;   --ok-soft:#16301C;
+    --warn:#DCA352; --warn-soft:#332612;
+    --crit:#E4837C; --crit-soft:#37201E;
+    --ai:#AE93E2;   --ai-soft:#241C38;
+    --demo:#E0A46A; --demo-soft:#33210F;
+    --focus:#48BCC7;
+    --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 28px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1615; --surface:#152020; --surface-2:#1A2726; --sunken:#111A19;
+  --line:#263534; --line-strong:#394B4A;
+  --ink:#E3EBEA; --ink-2:#A2B3B2; --ink-3:#778987;
+  --accent:#48BCC7; --accent-soft:#0E3037; --accent-ink:#84D8E1;
+  --ok:#5CBF71;   --ok-soft:#16301C;
+  --warn:#DCA352; --warn-soft:#332612;
+  --crit:#E4837C; --crit-soft:#37201E;
+  --ai:#AE93E2;   --ai-soft:#241C38;
+  --demo:#E0A46A; --demo-soft:#33210F;
+  --focus:#48BCC7;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 28px rgba(0,0,0,.4);
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0; background:var(--paper); color:var(--ink); font:400 13.5px/1.5 var(--sans); -webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--focus); outline-offset:2px; border-radius:3px}
+[hidden]{display:none !important}
+.num{font-family:var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+.u{text-transform:uppercase; letter-spacing:.08em; font-size:10.5px; font-weight:600; color:var(--ink-3)}
+
+/* ---------------------------------------------------------------- каркас */
+.app{display:grid; grid-template-columns:224px 1fr; grid-template-rows:auto 1fr; height:100vh; min-height:0}
+.topbar{grid-column:1/-1; display:flex; align-items:center; gap:13px; padding:0 14px; height:52px;
+  background:var(--surface); border-bottom:1px solid var(--line); position:relative; z-index:20}
+.brand{display:flex; align-items:baseline; gap:8px; width:210px; flex:none}
+.brand b{font-size:15.5px; font-weight:700; letter-spacing:-.02em}
+.brand span{font-size:10.5px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.09em}
+.demoflag{display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:20px;
+  background:var(--demo-soft); color:var(--demo); border:1px solid color-mix(in srgb,var(--demo) 32%,transparent);
+  font-size:11.5px; font-weight:600; white-space:nowrap}
+.demoflag::before{content:"●"; font-size:8px}
+.searchwrap{flex:1; max-width:400px; position:relative}
+.searchwrap input{width:100%; padding:6px 10px 6px 29px; background:var(--sunken);
+  border:1px solid transparent; border-radius:var(--r); color:var(--ink)}
+.searchwrap input::placeholder{color:var(--ink-3)}
+.searchwrap input:focus{background:var(--surface); border-color:var(--line-strong); outline:none}
+.searchwrap .mag{position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--ink-3)}
+.searchwrap .kbd{position:absolute; right:7px; top:50%; transform:translateY(-50%)}
+.kbd{font:500 10px/1.6 var(--mono); padding:1px 5px; border:1px solid var(--line-strong);
+  border-bottom-width:2px; border-radius:3px; color:var(--ink-3); background:var(--surface); white-space:nowrap}
+.spacer{flex:1}
+.pick{display:flex; align-items:center; gap:6px; padding:5px 9px; background:transparent;
+  border:1px solid var(--line); border-radius:var(--r); cursor:pointer}
+.pick:hover{border-color:var(--line-strong)}
+.pick small{color:var(--ink-3); font-size:11px}
+.killswitch{display:flex; align-items:center; gap:7px; padding:5px 10px; cursor:pointer;
+  border:1px solid var(--crit); color:var(--crit); background:transparent; border-radius:var(--r); font-weight:600}
+.killswitch:hover{background:var(--crit-soft)}
+.killswitch.off{border-color:var(--line-strong); color:var(--ink-2)}
+
+.rail{background:var(--surface); border-right:1px solid var(--line); display:flex; flex-direction:column;
+  padding:10px 8px; gap:2px; overflow-y:auto; min-height:0}
+.rail .u{padding:12px 8px 5px}
+.navitem{display:flex; align-items:center; gap:9px; width:100%; padding:6px 9px; border:0;
+  background:transparent; border-radius:var(--r); cursor:pointer; text-align:left; color:var(--ink-2)}
+.navitem:hover{background:var(--sunken); color:var(--ink)}
+.navitem[aria-current="page"]{background:var(--accent-soft); color:var(--accent-ink); font-weight:600}
+.navitem .ico{width:16px; text-align:center; flex:none; font-size:13px; opacity:.85}
+.navitem .cnt{margin-left:auto; font:500 11px/1 var(--mono); color:var(--ink-3)}
+.navitem .cnt.hot{color:var(--crit); font-weight:600}
+.navitem[aria-current="page"] .cnt{color:var(--accent-ink)}
+
+.main{overflow:auto; min-height:0; display:flex; flex-direction:column}
+.screen{display:flex; flex-direction:column; flex:1; min-height:0}
+.shead{display:flex; align-items:flex-end; gap:14px; padding:14px 18px 11px; border-bottom:1px solid var(--line);
+  background:var(--surface); flex:none; flex-wrap:wrap}
+.shead h1{margin:0; font-size:18px; font-weight:600; letter-spacing:-.02em}
+.shead .sub{color:var(--ink-3); font-size:12px; margin-top:2px}
+.statepick{display:flex; align-items:center; gap:6px; margin-left:auto}
+.statepick select{padding:4px 7px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r)}
+.body{flex:1; min-height:0; overflow:auto; padding:16px 18px 30px}
+.body.flush{padding:0; display:flex; min-height:0}
+
+/* ----------------------------------------------------------------- атоми */
+.btn{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:var(--r);
+  border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer;
+  font-weight:500; white-space:nowrap}
+.btn:hover{background:var(--sunken)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
+.btn.primary:hover{background:var(--accent-ink); border-color:var(--accent-ink)}
+.btn.quiet{border-color:transparent; background:transparent; color:var(--accent-ink)}
+.btn.quiet:hover{background:var(--accent-soft)}
+.btn.danger{border-color:var(--crit); color:var(--crit)}
+.btn.danger:hover{background:var(--crit-soft)}
+.btn.sm{padding:3px 8px; font-size:12px}
+.btn[disabled]{opacity:.5; cursor:not-allowed}
+.btn.busy{pointer-events:none; opacity:.75}
+
+.badge{display:inline-flex; align-items:center; gap:5px; padding:1.5px 8px; border-radius:20px;
+  font-size:11.5px; font-weight:500; border:1px solid transparent; white-space:nowrap}
+.badge .dot{width:6px; height:6px; border-radius:50%; background:currentColor; flex:none}
+.b-ok{background:var(--ok-soft); color:var(--ok); border-color:color-mix(in srgb,var(--ok) 26%,transparent)}
+.b-warn{background:var(--warn-soft); color:var(--warn); border-color:color-mix(in srgb,var(--warn) 26%,transparent)}
+.b-crit{background:var(--crit-soft); color:var(--crit); border-color:color-mix(in srgb,var(--crit) 26%,transparent)}
+.b-info{background:var(--accent-soft); color:var(--accent-ink); border-color:color-mix(in srgb,var(--accent) 24%,transparent)}
+.b-mute{background:var(--sunken); color:var(--ink-2); border-color:var(--line)}
+.b-demo{background:var(--demo-soft); color:var(--demo); border-color:color-mix(in srgb,var(--demo) 30%,transparent)}
+
+.ai{display:inline-flex; align-items:center; gap:4px; padding:0 5px; height:16px; border-radius:3px;
+  background:var(--ai-soft); color:var(--ai); border:1px solid color-mix(in srgb,var(--ai) 30%,transparent);
+  font:600 9.5px/1 var(--sans); letter-spacing:.07em; cursor:pointer; vertical-align:middle; user-select:none}
+.ai:hover{filter:brightness(.96)}
+.ai::before{content:"◆"; font-size:7px}
+
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r)}
+.card>.ch{padding:10px 13px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.card>.ch h3{margin:0; font-size:13px; font-weight:600}
+.card>.cb{padding:13px}
+.grid{display:grid; gap:12px}
+.note{padding:9px 12px; border-radius:var(--r); border:1px solid var(--line); background:var(--surface-2);
+  color:var(--ink-2); font-size:12.5px}
+.note.warn{background:var(--warn-soft); border-color:color-mix(in srgb,var(--warn) 30%,transparent); color:var(--ink)}
+.note.crit{background:var(--crit-soft); border-color:color-mix(in srgb,var(--crit) 30%,transparent); color:var(--ink)}
+.note.info{background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 26%,transparent); color:var(--ink)}
+.note.demo{background:var(--demo-soft); border-color:color-mix(in srgb,var(--demo) 34%,transparent); color:var(--ink)}
+.note b{font-weight:600}
+
+/* ------------------------------------------------------- рейка етапів */
+.stagerail{display:grid; grid-template-columns:repeat(4,1fr); gap:0; border:1px solid var(--line);
+  border-radius:var(--r); overflow:hidden; background:var(--surface)}
+.stage{padding:10px 13px; border-right:1px solid var(--line); position:relative; display:flex;
+  flex-direction:column; gap:5px; min-width:0}
+.stage:last-child{border-right:0}
+.stage::before{content:""; position:absolute; left:0; right:0; top:0; height:3px; background:var(--line)}
+.stage.done::before{background:var(--ok)}
+.stage.active::before{background:var(--accent)}
+.stage.block::before{background:var(--crit)}
+.stage.demo::before{background:var(--demo)}
+.stage .sn{display:flex; align-items:center; gap:7px}
+.stage .sn i{font-style:normal; font:600 10px/1 var(--mono); color:var(--ink-3); border:1px solid var(--line-strong);
+  border-radius:50%; width:16px; height:16px; display:grid; place-items:center; flex:none}
+.stage.done .sn i{background:var(--ok); border-color:var(--ok); color:#fff}
+.stage.active .sn i{background:var(--accent); border-color:var(--accent); color:#fff}
+.stage .sn b{font-size:12.5px; font-weight:600}
+.stage .meta{font-size:11.5px; color:var(--ink-2); line-height:1.45}
+.stage .who{font-size:11px; color:var(--ink-3); display:flex; align-items:center; gap:5px}
+.stage .who .m{color:var(--ai); font-weight:600}
+
+/* ------------------------------------------------------ картка замовлення */
+.ordergrid{display:grid; grid-template-columns:292px minmax(0,1fr) 292px; gap:13px; align-items:start}
+.tabs{display:flex; gap:2px; border-bottom:1px solid var(--line); padding:0 3px; margin-bottom:0}
+.tab{padding:7px 12px; border:0; background:transparent; cursor:pointer; color:var(--ink-2);
+  border-bottom:2px solid transparent; font-size:12.5px; margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--accent-ink); border-bottom-color:var(--accent); font-weight:600}
+dl{margin:0}
+.frow{display:grid; grid-template-columns:118px 1fr; gap:9px; padding:5px 13px; align-items:baseline}
+.ordergrid .frow{grid-template-columns:104px 1fr}
+.frow+.frow{border-top:1px solid var(--line)}
+.frow>dt{color:var(--ink-2); font-size:12px}
+.frow>dd{margin:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0}
+.frow>dd .trunc{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%}
+
+.checks{display:flex; flex-direction:column}
+.check{display:grid; grid-template-columns:18px 1fr; gap:8px; padding:7px 13px; align-items:start; font-size:12.5px}
+.check+.check{border-top:1px solid var(--line)}
+.check .mk{font-size:12px; line-height:1.5; text-align:center}
+.check.ok .mk{color:var(--ok)}
+.check.warn .mk{color:var(--warn)}
+.check.bad .mk{color:var(--crit)}
+.check .t{color:var(--ink)}
+.check .d{color:var(--ink-3); font-size:11.5px; display:block; margin-top:1px}
+
+table.tbl{border-collapse:separate; border-spacing:0; width:100%; font-size:12.5px}
+.tblwrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--r); background:var(--surface)}
+table.tbl th{position:sticky; top:0; z-index:2; background:var(--surface-2); text-align:left; padding:7px 10px;
+  border-bottom:1px solid var(--line-strong); font-weight:600; font-size:10.5px; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--ink-3); white-space:nowrap}
+table.tbl th.r,table.tbl td.r{text-align:right}
+table.tbl td{padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:middle}
+table.tbl tbody tr:hover td{background:var(--surface-2)}
+table.tbl tbody tr[aria-selected="true"] td{background:var(--accent-soft)}
+table.tbl tbody tr:last-child td{border-bottom:0}
+table.tbl tfoot td{padding:7px 10px; border-top:1px solid var(--line-strong); font-weight:600; background:var(--surface-2)}
+table.tbl .idc{font-family:var(--mono); font-weight:500; white-space:nowrap}
+table.tbl.dense td{padding:4px 10px}
+.raw{color:var(--ink-3); font-size:11px; display:block; margin-top:2px}
+.trunc{max-width:230px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block}
+
+.toolbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:11px}
+.views{display:flex; gap:4px; flex-wrap:wrap}
+.view{padding:4px 10px; border:1px solid var(--line); background:var(--surface); border-radius:20px;
+  cursor:pointer; font-size:12px; color:var(--ink-2)}
+.view:hover{border-color:var(--line-strong)}
+.view[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--paper); font-weight:600}
+.chips{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+.chip{display:inline-flex; align-items:center; gap:6px; padding:2.5px 6px 2.5px 9px; border:1px solid var(--line-strong);
+  border-radius:20px; background:var(--surface); font-size:12px}
+.chip button{border:0; background:transparent; cursor:pointer; color:var(--ink-3); padding:0 2px; line-height:1}
+.chip button:hover{color:var(--crit)}
+.count{color:var(--ink-3); font-size:12px; margin-left:auto}
+.bulkbar{display:flex; align-items:center; gap:9px; padding:8px 12px; margin-bottom:11px;
+  background:var(--ink); color:var(--paper); border-radius:var(--r); flex-wrap:wrap}
+.bulkbar .btn{background:transparent; border-color:rgba(255,255,255,.35); color:var(--paper)}
+.bulkbar .btn:hover{background:rgba(255,255,255,.13)}
+
+/* ------------------------------------------------------- майстер-деталь */
+.split{display:grid; grid-template-columns:minmax(320px,390px) 1fr; flex:1; min-height:0}
+.split>.left{border-right:1px solid var(--line); overflow-y:auto; background:var(--surface); min-height:0}
+.split>.right{overflow-y:auto; min-height:0; background:var(--paper)}
+.seg{display:flex; gap:2px; padding:9px 11px; border-bottom:1px solid var(--line); flex-wrap:wrap;
+  position:sticky; top:0; background:var(--surface); z-index:3}
+.segbtn{padding:4px 9px; border:0; background:transparent; border-radius:var(--r); cursor:pointer;
+  font-size:12px; color:var(--ink-2); display:flex; gap:6px; align-items:center}
+.segbtn:hover{background:var(--sunken)}
+.segbtn[aria-pressed="true"]{background:var(--sunken); color:var(--ink); font-weight:600}
+.segbtn i{font-style:normal; font-family:var(--mono); font-size:11px; color:var(--ink-3)}
+.segbtn.alarm i{color:var(--crit); font-weight:600}
+
+.qrow{display:flex; flex-direction:column; align-items:stretch; width:100%; text-align:left; border:0;
+  border-bottom:1px solid var(--line); background:transparent; padding:10px 12px; cursor:pointer;
+  border-left:3px solid transparent}
+.qrow:hover{background:var(--surface-2)}
+.qrow[aria-selected="true"]{background:var(--accent-soft); border-left-color:var(--accent)}
+.qrow .l1{display:flex; align-items:baseline; gap:8px}
+.qrow .l1 .onum{font-family:var(--mono); font-weight:600; font-size:13px}
+.qrow .l1 .sum{margin-left:auto; font-family:var(--mono); font-variant-numeric:tabular-nums; font-weight:600}
+.qrow .l2{color:var(--ink-2); font-size:12px; margin-top:2px; display:flex; gap:7px; align-items:center; flex-wrap:wrap}
+.qrow .l3{margin-top:6px; display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+.qrow .age{color:var(--ink-3); font-size:11px; font-family:var(--mono)}
+.qrow .age.late{color:var(--crit); font-weight:600}
+.src{font-size:10.5px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-3);
+  border:1px solid var(--line); border-radius:3px; padding:0 4px}
+
+/* ----------------------------------------------------------- документ */
+.doc{background:#fff; color:#1b1b1b; font-family:var(--serif); font-size:11.5px; line-height:1.45;
+  padding:20px 22px; box-shadow:var(--shadow); border:1px solid var(--line); max-width:620px; margin:0 auto}
+.doc h4{margin:0 0 3px; font-size:14px; text-align:center; font-weight:600}
+.doc .meta{text-align:center; font-size:10.5px; color:#555; margin-bottom:11px}
+.doc .party{margin:6px 0; font-size:11px}
+.doc table{width:100%; border-collapse:collapse; margin:9px 0; font-size:10.5px}
+.doc th,.doc td{border:1px solid #999; padding:3px 5px; text-align:left}
+.doc th{background:#eee; font-weight:600; font-size:9.5px}
+.doc td.r,.doc th.r{text-align:right; font-family:var(--mono)}
+.doc .tot{text-align:right; margin-top:8px; font-size:11px}
+.doc .sig{display:flex; justify-content:space-between; margin-top:18px; font-size:10px; color:#555}
+.doc .stamp{margin-top:14px; border:2px dashed #b45309; color:#b45309; padding:6px 10px; text-align:center;
+  font-family:var(--sans); font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase}
+
+/* ------------------------------------------------------------- канбан */
+.board{display:flex; gap:11px; align-items:flex-start; overflow-x:auto; padding-bottom:8px}
+.col{flex:0 0 246px; background:var(--sunken); border:1px solid var(--line); border-radius:var(--r);
+  display:flex; flex-direction:column}
+.col>header{padding:9px 11px; border-bottom:1px solid var(--line)}
+.col>header .t{display:flex; align-items:center; gap:7px; font-weight:600; font-size:12.5px}
+.col>header .s{color:var(--ink-3); font-size:11px; margin-top:2px; font-family:var(--mono)}
+.col .stack{padding:8px; display:flex; flex-direction:column; gap:7px; min-height:54px}
+.kcard{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:9px 10px;
+  cursor:grab; width:100%; text-align:left; display:flex; flex-direction:column; gap:4px}
+.kcard:hover{border-color:var(--line-strong)}
+.kcard .kt{font-family:var(--mono); font-size:11.5px; font-weight:600}
+.kcard .kn{font-size:12px}
+.kcard .kf{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+.kcard .sum{margin-left:auto; font-family:var(--mono); font-variant-numeric:tabular-nums; font-weight:600; font-size:12px}
+.kcard.stale{border-left:3px solid var(--crit)}
+.emptycol{color:var(--ink-3); font-size:12px; padding:10px; text-align:center}
+
+/* ------------------------------------------------------------- панель */
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(198px,1fr)); gap:11px}
+.kpi{display:flex; flex-direction:column; align-items:flex-start; background:var(--surface);
+  border:1px solid var(--line); border-radius:var(--r); padding:12px 13px; cursor:pointer; text-align:left; width:100%}
+.kpi:hover{border-color:var(--line-strong)}
+.kpi .k{color:var(--ink-3); font-size:11.5px}
+.kpi .v{font:600 25px/1.15 var(--mono); font-variant-numeric:tabular-nums; margin:5px 0 4px; letter-spacing:-.03em}
+.spark{display:flex; align-items:flex-end; gap:3px; height:54px; margin-top:9px}
+.spark i{flex:1; background:var(--accent); opacity:.34; border-radius:1px 1px 0 0; min-height:2px}
+.spark i.hi{opacity:.92}
+
+/* --------------------------------------------------- автоматизації, історія */
+.autorow{display:grid; grid-template-columns:1fr auto auto auto; gap:11px; align-items:center;
+  padding:10px 12px; border-bottom:1px solid var(--line)}
+.autorow:last-child{border-bottom:0}
+.autorow .an{display:block; font-weight:600; font-size:12.5px}
+.autorow .ad{display:block; color:var(--ink-2); font-size:12px; margin-top:2px}
+.lvl{display:flex; border:1px solid var(--line-strong); border-radius:var(--r); overflow:hidden}
+.lvl button{border:0; background:var(--surface); padding:3px 8px; cursor:pointer; font-size:11.5px;
+  color:var(--ink-2); border-right:1px solid var(--line)}
+.lvl button:last-child{border-right:0}
+.lvl button[aria-pressed="true"]{background:var(--accent); color:#fff; font-weight:600}
+.sw{width:34px; height:19px; border-radius:20px; border:1px solid var(--line-strong); background:var(--sunken);
+  position:relative; cursor:pointer; padding:0}
+.sw::after{content:""; position:absolute; top:2px; left:2px; width:13px; height:13px; border-radius:50%;
+  background:var(--ink-3); transition:.15s}
+.sw[aria-checked="true"]{background:var(--ok-soft); border-color:var(--ok)}
+.sw[aria-checked="true"]::after{left:17px; background:var(--ok)}
+.steps{display:flex; flex-direction:column; font-size:12px}
+.step{display:grid; grid-template-columns:22px 1fr auto; gap:9px; padding:7px 0;
+  border-bottom:1px dashed var(--line); align-items:baseline}
+.step:last-child{border-bottom:0}
+.step .n{font-family:var(--mono); color:var(--ink-3); font-size:11px}
+.step .io{color:var(--ink-3); font-family:var(--mono); font-size:11px; margin-top:3px; word-break:break-all; display:block}
+.step.fail{color:var(--crit)}
+
+/* -------------------------------------------------------- стрічка подій */
+.feed{display:flex; flex-direction:column}
+.fitem{display:grid; grid-template-columns:20px 1fr auto; gap:9px; padding:9px 13px; align-items:start}
+.fitem+.fitem{border-top:1px solid var(--line)}
+.fitem .av{width:20px; height:20px; border-radius:50%; display:grid; place-items:center; font-size:10px;
+  font-weight:700; background:var(--sunken); color:var(--ink-2)}
+.fitem.sys .av{background:var(--ai-soft); color:var(--ai)}
+.fitem .who{font-size:12.5px; font-weight:600}
+.fitem .what{font-size:12.5px; color:var(--ink-2); margin-top:1px}
+.fitem .basis{font-size:11px; color:var(--ink-3); margin-top:3px}
+.fitem time{font-size:11px; color:var(--ink-3); font-family:var(--mono); white-space:nowrap}
+
+/* ------------------------------------------------------------- код/JSON */
+pre.code{margin:0; padding:11px 13px; background:var(--sunken); border-radius:var(--r); overflow-x:auto;
+  font-family:var(--mono); font-size:11.5px; line-height:1.6; color:var(--ink)}
+pre.code .k{color:var(--accent-ink)}
+pre.code .s{color:var(--ok)}
+pre.code .c{color:var(--ink-3)}
+
+/* -------------------------------------------------------------- стани */
+.state{padding:36px 18px; display:flex; flex-direction:column; align-items:center; gap:9px;
+  text-align:center; color:var(--ink-2)}
+.state h3{margin:0; font-size:15px; color:var(--ink); font-weight:600}
+.state p{margin:0; max-width:46ch; font-size:12.5px}
+.sk{background:linear-gradient(90deg,var(--sunken) 25%,var(--line) 50%,var(--sunken) 75%);
+  background-size:200% 100%; animation:sh 1.3s infinite; border-radius:3px}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sklist{display:flex; flex-direction:column; gap:9px; padding:14px 0}
+.sklist .sk{height:38px}
+
+/* ----------------------------------------------------- тост, модалка, демо */
+.toasts{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:60; max-width:400px}
+.toast{background:var(--ink); color:var(--paper); padding:10px 13px; border-radius:var(--r); box-shadow:var(--shadow);
+  display:flex; gap:11px; align-items:center; font-size:12.5px; animation:tin .18s ease-out}
+@keyframes tin{from{transform:translateY(8px); opacity:0}to{transform:none; opacity:1}}
+.toast button{background:transparent; border:0; color:var(--paper); text-decoration:underline; cursor:pointer;
+  font-weight:600; white-space:nowrap}
+.pop{position:fixed; z-index:70; max-width:340px; background:var(--surface); border:1px solid var(--line-strong);
+  border-radius:var(--r); box-shadow:var(--shadow); padding:12px 13px; font-size:12.5px}
+.pop h4{margin:0 0 6px; font-size:12.5px; display:flex; align-items:center; gap:6px}
+.pop dl{display:grid; grid-template-columns:auto 1fr; gap:3px 9px; margin:7px 0 0}
+.pop dt{color:var(--ink-3); font-size:11.5px}
+.pop dd{margin:0; font-size:11.5px}
+.pop .close{position:absolute; top:6px; right:8px; border:0; background:transparent; cursor:pointer;
+  color:var(--ink-3); font-size:14px}
+.backdrop{position:fixed; inset:0; background:rgba(18,32,31,.45); z-index:65; display:flex;
+  align-items:center; justify-content:center; padding:18px}
+.modal{background:var(--surface); border:1px solid var(--line-strong); border-radius:var(--r);
+  box-shadow:var(--shadow); max-width:560px; width:100%; max-height:88vh; overflow:auto}
+.modal header{padding:13px 15px; border-bottom:1px solid var(--line)}
+.modal header h3{margin:0; font-size:14px}
+.modal .mb{padding:15px}
+.modal footer{padding:11px 15px; border-top:1px solid var(--line); display:flex; gap:9px; align-items:center; flex-wrap:wrap}
+.demobar{position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:58; background:var(--ink);
+  color:var(--paper); padding:9px 15px; border-radius:22px; box-shadow:var(--shadow); display:flex; gap:11px;
+  align-items:center; font-size:12.5px; max-width:min(93vw,700px)}
+.demobar button{background:transparent; border:1px solid rgba(255,255,255,.4); color:var(--paper);
+  border-radius:14px; padding:2px 10px; cursor:pointer; font-size:11.5px}
+.demobar .step-n{font-family:var(--mono); opacity:.7; font-size:11px; white-space:nowrap}
+.demobar .bar{position:absolute; left:0; bottom:0; height:2px; background:var(--accent); border-radius:2px; transition:width .2s linear}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important}}
+@media (max-width:1200px){ .ordergrid{grid-template-columns:1fr 1fr} .ordergrid>.c3{grid-column:1/-1} }
+@media (max-width:900px){
+  .app{grid-template-columns:56px 1fr}
+  .rail .lbl,.rail .u{display:none}
+  .navitem{justify-content:center; padding:8px 4px}
+  .navitem .cnt{display:none}
+  .split{grid-template-columns:1fr}
+  .split>.left{max-height:44vh; border-right:0; border-bottom:1px solid var(--line)}
+  .ordergrid{grid-template-columns:1fr}
+  .stagerail{grid-template-columns:1fr 1fr}
+}
+</style>
+<!--ARTIFACT:SPLIT-->
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><b>Замовлення</b><span>Гідросвіт</span></div>
+    <span class="demoflag" title="Прототип на тестових даних">ДЕМО · тестові дані · 1С/УНФ не підключено</span>
+    <div class="searchwrap">
+      <span class="mag" aria-hidden="true">⌕</span>
+      <input id="gsearch" type="search" placeholder="Номер замовлення, клієнт, ТТН, телефон…" aria-label="Пошук">
+      <span class="kbd" aria-hidden="true">Ctrl K</span>
+    </div>
+    <div class="spacer"></div>
+    <button class="pick" id="rolepick" aria-haspopup="listbox"><small>Роль</small> <b id="rolename">Менеджер</b> <span aria-hidden="true">▾</span></button>
+    <button class="killswitch" id="kill" aria-pressed="false">■ Зупинити автоматику</button>
+  </header>
+
+  <nav class="rail" aria-label="Розділи">
+    <div class="u">Робота дня</div>
+    <button class="navitem" data-go="queue"><span class="ico" aria-hidden="true">▤</span><span class="lbl">Черга замовлень</span><span class="cnt hot" id="nav-queue">7</span></button>
+    <button class="navitem" data-go="exceptions"><span class="ico" aria-hidden="true">!</span><span class="lbl">Винятки</span><span class="cnt hot" id="nav-exc">6</span></button>
+    <div class="u">Замовлення</div>
+    <button class="navitem" data-go="pipeline"><span class="ico" aria-hidden="true">▥</span><span class="lbl">Воронка виконання</span><span class="cnt">42</span></button>
+    <button class="navitem" data-go="drafts"><span class="ico" aria-hidden="true">⇥</span><span class="lbl">Чернетки для 1С/УНФ</span><span class="cnt hot" id="nav-drafts">18</span></button>
+    <button class="navitem" data-go="clients"><span class="ico" aria-hidden="true">◍</span><span class="lbl">Клієнти</span><span class="cnt">312</span></button>
+    <div class="u">Контроль</div>
+    <button class="navitem" data-go="automation"><span class="ico" aria-hidden="true">⚙</span><span class="lbl">Автоматизації</span><span class="cnt hot" id="nav-auto">1</span></button>
+    <button class="navitem" data-go="dashboard"><span class="ico" aria-hidden="true">▦</span><span class="lbl">Панель</span></button>
+    <div style="flex:1"></div>
+    <button class="navitem" id="demobtn"><span class="ico" aria-hidden="true">▶</span><span class="lbl">Демо 90 секунд</span></button>
+    <button class="navitem" id="themebtn"><span class="ico" aria-hidden="true">◐</span><span class="lbl">Тема</span></button>
+  </nav>
+
+  <main class="main" id="main"></main>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="popholder"></div>
+<div id="modalholder"></div>
+<div id="demoholder"></div>
+<script>
+/* =============================================================
+   Замовлення — кликабельний прототип обробки замовлень.
+   ДЕМОНСТРАЦІЙНИЙ РЕЖИМ. Усі дані тестові й вигадані.
+   Реального підключення до 1С/УНФ немає: система готує чернетки
+   й показує payload, але нічого нікуди не передає.
+   ============================================================= */
+"use strict";
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = n => Number(n).toLocaleString("uk-UA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\s  ]/g, " ");
+
+/* ---------------------------------------------------------- дані */
+const ORDERS = [
+  { id: "7418", src: "Prom.ua", t: "09:14", seg: "exc", client: "ТОВ «Будмайстер Плюс»", who: "юрособа",
+    pos: 4, sum: 48720.00, exc: "Перевищено кредитний ліміт: борг 62 400 ₴ при ліміті 50 000 ₴", lvl: "crit", age: "1 год 43 хв", late: true, ai: false },
+  { id: "7419", src: "Сайт", t: "09:26", seg: "new", client: "ФОП Литвиненко Р. О.", who: "ФОП",
+    pos: 3, sum: 23146.00, exc: null, lvl: "ok", age: "1 год 31 хв", late: false, ai: true,
+    note: "Усі перевірки пройдено · чернетка для УНФ готова" },
+  { id: "7420", src: "KeyCRM", t: "09:41", seg: "exc", client: "Оксана Кравець", who: "роздріб",
+    pos: 1, sum: 3890.00, exc: "Адресу доставки не розпізнано: «десь на Троєщині, подзвоніть»", lvl: "warn", age: "1 год 16 хв", late: false, ai: true },
+  { id: "7421", src: "Prom.ua", t: "10:02", seg: "exc", client: "ТОВ «Теплодім»", who: "юрособа",
+    pos: 6, sum: 96450.00, exc: "Товару не вистачає: радіатор Purmo C22 — замовлено 12, на складі 7", lvl: "crit", age: "55 хв", late: false, ai: false },
+  { id: "7422", src: "Телефон", t: "10:15", seg: "exc", client: "ФОП Гнатюк С. В.", who: "ФОП",
+    pos: 3, sum: 21100.00, exc: "Ціна на 18 % нижча за прайс — потрібне підтвердження керівника", lvl: "warn", age: "42 хв", late: false, ai: false },
+  { id: "7423", src: "Сайт", t: "10:33", seg: "exc", client: "ТОВ «Будмайстер Плюс»", who: "юрособа",
+    pos: 4, sum: 48720.00, exc: "Схоже на дубль замовлення № 7418 (той самий склад, різниця 79 хв)", lvl: "warn", age: "24 хв", late: false, ai: true },
+  { id: "7424", src: "KeyCRM", t: "10:47", seg: "new", client: "ТОВ «Аквалайн»", who: "юрособа",
+    pos: 2, sum: 15680.00, exc: null, lvl: "ok", age: "10 хв", late: false, ai: false,
+    note: "Усі перевірки пройдено · чекає виставлення рахунку" },
+  { id: "7411", src: "Сайт", t: "вчора 16:20", seg: "work", client: "ФОП Сидоренко І. П.", who: "ФОП",
+    pos: 2, sum: 8940.00, exc: null, lvl: "ok", age: "у роботі", late: false, ai: false,
+    note: "Оплачено · зібрано · чекає відвантаження" }
+];
+
+/* Повне замовлення для картки */
+const ORDER = {
+  id: "7419", src: "Власний сайт gidrosvit.ua", created: "31.08.2026, 09:26", extId: "web-2026-08-31-0142",
+  client: {
+    name: "ФОП Литвиненко Роман Олександрович", short: "ФОП Литвиненко Р. О.", kind: "ФОП, 3 група ЄП",
+    ipn: "3187409255", phone: "+380 67 412-88-01", email: "r.lytvynenko@gmail.com",
+    contract: "№ 214/26 від 12.03.2026", limit: 50000, used: 0, debt: 0, orders: 7, since: "03.2026",
+    manager: "Ірина Ковальчук"
+  },
+  lines: [
+    { n: 1, sku: "PUR-C22-500-1000", name: "Радіатор сталевий Purmo Compact C22 500×1000", qty: 6, unit: "шт", price: 3240.00, sum: 19440.00, stock: 14, match: "артикул" },
+    { n: 2, sku: "ITP-BV-12", name: "Кран кульовий Itap Ø1/2\", ручка-метелик", qty: 12, unit: "шт", price: 148.00, sum: 1776.00, stock: 240, match: "артикул" },
+    { n: 3, sku: "PPR-20-25", name: "Труба PPR PN20 Ø25, відрізок 4 м", qty: 20, unit: "шт", price: 96.50, sum: 1930.00, stock: 86, match: "підтверджене зіставлення", raw: "труба поліпропілен 25 армована" }
+  ],
+  base: 19288.33, vat: 3857.67, total: 23146.00,
+  delivery: { carrier: "Нова Пошта", city: "Львів", branch: "Відділення № 12 (вул. Городоцька, 359)",
+    raw: "Львів НП 12", recipient: "Литвиненко Р. О., +380 67 412-88-01",
+    ttn: "20450098871234", status: "В дорозі, очікується 01.09" },
+  checks: [
+    { s: "ok", t: "Клієнта знайдено в базі за телефоном", d: "ФОП Литвиненко Р. О. · 7 замовлень з березня 2026" },
+    { s: "ok", t: "ІПН заповнений і валідний", d: "3187409255 — 10 цифр, контрольна сума збігається" },
+    { s: "ok", t: "Телефон нормалізовано", d: "«067 412 88 01» → +380 67 412-88-01" },
+    { s: "ok", t: "Договір чинний", d: "№ 214/26, дійсний до 31.12.2026" },
+    { s: "ok", t: "Кредитний ліміт не перевищено", d: "ліміт 50 000 ₴ · використано 0 ₴ · простроченого боргу немає" },
+    { s: "ok", t: "Усі 3 позиції зіставлені з номенклатурою", d: "2 за артикулом, 1 за підтвердженим зіставленням від 14.06.2026" },
+    { s: "ok", t: "Залишку на складі достатньо", d: "6 з 14 · 12 з 240 · 20 з 86" },
+    { s: "warn", t: "Адресу доставки розпізнано з вільного тексту", d: "«Львів НП 12» → Нова Пошта, Львів, відділення № 12. Перевірте перед відвантаженням.", ai: "Адресу витягнуто з поля «Коментар» замовлення й зіставлено з довідником відділень" }
+  ],
+  stages: [
+    { n: 1, name: "Оплата", st: "done", meta: "Рахунок № СФ-3391 виставлено 09:31<br>Оплата 23 146,00 ₴ надійшла 11:04", who: "система", ai: false },
+    { n: 2, name: "Збірка", st: "done", meta: "Зібрано 3 з 3 позицій, 12:20<br>Комірник Петро Шевчук", who: "людина", ai: false },
+    { n: 3, name: "Доставка", st: "active", meta: "ТТН 20450098871234, Нова Пошта<br>В дорозі, очікується 01.09", who: "система", ai: false },
+    { n: 4, name: "Документи", st: "demo", meta: "Рахунок готовий. Видаткова накладна — чернетка<br><b>Не передано в 1С/УНФ</b>", who: "чекає підключення", ai: false }
+  ],
+  feed: [
+    { sys: true, who: "Приймання з сайту", what: "прийняла замовлення з gidrosvit.ua", basis: "webhook, зовнішній id web-2026-08-31-0142", t: "09:26:04" },
+    { sys: true, who: "Перевірка клієнта", what: "знайшла клієнта за телефоном і підтягнула договір № 214/26", basis: "ФОП Литвиненко Р. О., збіг за нормалізованим телефоном", t: "09:26:07" },
+    { sys: true, who: "Перевірка даних", what: "пройшла 7 перевірок з 8; адресу доставки розпізнано моделлю", basis: "«Львів НП 12» → Нова Пошта, Львів, № 12", t: "09:26:09", ai: true },
+    { sys: true, who: "Підготовка чернетки", what: "підготувала чернетку «Замовлення покупця» для 1С/УНФ", basis: "передачу не виконано: підключення не налаштоване", t: "09:26:11" },
+    { sys: false, who: "Ірина Ковальчук", what: "перевірила адресу доставки та підтвердила замовлення", basis: null, t: "09:34:52" },
+    { sys: true, who: "Формування рахунку", what: "сформувала рахунок № СФ-3391 на 23 146,00 ₴", basis: "після підтвердження менеджера", t: "09:34:55" },
+    { sys: true, who: "Звірка оплат", what: "зафіксувала оплату 23 146,00 ₴ і закрила етап «Оплата»", basis: "виписка ПриватБанк, призначення «Оплата згідно рах. СФ-3391»", t: "11:04:18" },
+    { sys: false, who: "Петро Шевчук", what: "зібрав замовлення, 3 з 3 позицій", basis: null, t: "12:20:31" },
+    { sys: true, who: "Оновлення картки клієнта", what: "додала замовлення в історію клієнта та оновила суму обороту", basis: "оборот за 2026: 164 380,00 ₴", t: "12:21:02" }
+  ]
+};
+
+const EXCEPTIONS = [
+  { id: "7418", type: "Кредитний ліміт", lvl: "crit", client: "ТОВ «Будмайстер Плюс»", sum: 48720.00,
+    why: "Прострочений борг 62 400 ₴ при ліміті 50 000 ₴. Рахунок не виставлено.",
+    fix: "Рішення керівника: відвантажити під гарантійний лист, вимагати передоплату або призупинити.",
+    to: "Ірина Ковальчук", sla: "прострочено на 1 год 43 хв", late: true, ai: false },
+  { id: "7421", type: "Немає товару", lvl: "crit", client: "ТОВ «Теплодім»", sum: 96450.00,
+    why: "Радіатор Purmo C22 500×1000: замовлено 12, на складі 7. Решта позицій у наявності.",
+    fix: "Розділити на дві поставки, замінити аналогом Kermi FKO 22 або узгодити строк.",
+    to: "Ірина Ковальчук", sla: "55 хв", late: false, ai: false },
+  { id: "7423", type: "Можливий дубль", lvl: "warn", client: "ТОВ «Будмайстер Плюс»", sum: 48720.00,
+    why: "Той самий склад позицій і сума, що в № 7418; різниця 79 хвилин, той самий контакт.",
+    fix: "Підтвердити як окреме замовлення або скасувати як дубль.",
+    to: "Ірина Ковальчук", sla: "24 хв", late: false, ai: true },
+  { id: "7422", type: "Ціна нижче прайсу", lvl: "warn", client: "ФОП Гнатюк С. В.", sum: 21100.00,
+    why: "Ціна в замовленні на 18 % нижча за чинний прайс. Знижка понад 15 % потребує підтвердження.",
+    fix: "Підтвердити знижку або повернути ціну до прайсової.",
+    to: "Андрій Мельник (керівник)", sla: "42 хв", late: false, ai: false },
+  { id: "7420", type: "Адреса доставки", lvl: "warn", client: "Оксана Кравець", sum: 3890.00,
+    why: "У коментарі «десь на Троєщині, подзвоніть». Відділення визначити не вдалося.",
+    fix: "Зателефонувати клієнту й обрати відділення зі списку.",
+    to: "Ірина Ковальчук", sla: "1 год 16 хв", late: false, ai: true },
+  { id: "7409", type: "Немає ЄДРПОУ", lvl: "crit", client: "ТОВ «Промбуд-Захід»", sum: 34200.00,
+    why: "Замовлення оформлено на юрособу, але ЄДРПОУ не вказано. Рахунок виставити неможливо.",
+    fix: "Запитати реквізити в клієнта; шаблон листа підготовлено, надсилає менеджер.",
+    to: "Ірина Ковальчук", sla: "прострочено на 4 год", late: true, ai: false }
+];
+
+const PIPELINE = [
+  { title: "Новий", hint: "Поріг: 30 хв", cards: [
+    { id: "7424", c: "ТОВ «Аквалайн»", s: 15680.00, m: "10 хв", next: "Виставити рахунок" }
+  ]},
+  { title: "Перевірено", hint: "Поріг: 1 год", cards: [
+    { id: "7419", c: "ФОП Литвиненко Р. О.", s: 23146.00, m: "1 год 31 хв", next: "Чернетка готова", stale: true }
+  ]},
+  { title: "Оплата", hint: "Поріг: 3 дні", cards: [
+    { id: "7415", c: "ТОВ «Сантех-Опт»", s: 71300.00, m: "4 дні", next: "Нагадати про оплату", stale: true },
+    { id: "7417", c: "ФОП Дяченко О. М.", s: 5420.00, m: "1 день", next: "Чекаємо оплату" }
+  ]},
+  { title: "Збірка", hint: "Поріг: 1 день", cards: [
+    { id: "7412", c: "ТОВ «Теплий Дім Плюс»", s: 42900.00, m: "6 год", next: "Комірник: Петро Ш." }
+  ]},
+  { title: "Доставка", hint: "Поріг: 5 днів", cards: [
+    { id: "7419", c: "ФОП Литвиненко Р. О.", s: 23146.00, m: "у дорозі", next: "ТТН 2045…1234" },
+    { id: "7411", c: "ФОП Сидоренко І. П.", s: 8940.00, m: "у дорозі", next: "ТТН 2045…0918" }
+  ]},
+  { title: "Документи", hint: "Чекають передачі в 1С/УНФ", cards: [
+    { id: "7419", c: "ФОП Литвиненко Р. О.", s: 23146.00, m: "чернетка", next: "Накладна не передана", stale: true },
+    { id: "7411", c: "ФОП Сидоренко І. П.", s: 8940.00, m: "чернетка", next: "Накладна не передана", stale: true }
+  ]},
+  { title: "Закрито", hint: "Документи підписані", cards: [] }
+];
+
+const DRAFTS = [
+  { id: "7419", doc: "Замовлення покупця", client: "ФОП Литвиненко Р. О.", sum: 23146.00, st: "ready", t: "31.08 09:26" },
+  { id: "7419", doc: "Видаткова накладна", client: "ФОП Литвиненко Р. О.", sum: 23146.00, st: "ready", t: "31.08 12:21" },
+  { id: "7424", doc: "Замовлення покупця", client: "ТОВ «Аквалайн»", sum: 15680.00, st: "ready", t: "31.08 10:47" },
+  { id: "7411", doc: "Видаткова накладна", client: "ФОП Сидоренко І. П.", sum: 8940.00, st: "ready", t: "30.08 17:12" },
+  { id: "7409", doc: "Замовлення покупця", client: "ТОВ «Промбуд-Захід»", sum: 34200.00, st: "err", t: "31.08 07:02",
+    err: "Немає ЄДРПОУ — обов'язковий реквізит контрагента в УНФ" },
+  { id: "7415", doc: "Замовлення покупця", client: "ТОВ «Сантех-Опт»", sum: 71300.00, st: "ready", t: "27.08 11:40" }
+];
+
+const PAYLOAD = `{
+  "Документ": "ЗаказПокупателя",
+  "Дата": "2026-08-31T09:26:11",
+  "Номер": "ВЕБ-7419",
+  "Контрагент": {
+    "Наименование": "ФОП Литвиненко Роман Олександрович",
+    "ИНН": "3187409255",
+    "ЮрФизЛицо": "ФизЛицо"
+  },
+  "Договор": "№ 214/26 від 12.03.2026",
+  "Склад": "Основний склад",
+  "ВалютаДокумента": "UAH",
+  "СуммаДокумента": 23146.00,
+  "УчитыватьНДС": true,
+  "СуммаВключаетНДС": true,
+  "Запасы": [
+    { "Номенклатура": "PUR-C22-500-1000",
+      "Количество": 6,  "Цена": 3240.00, "Сумма": 19440.00 },
+    { "Номенклатура": "ITP-BV-12",
+      "Количество": 12, "Цена": 148.00,  "Сумма": 1776.00 },
+    { "Номенклатура": "PPR-20-25",
+      "Количество": 20, "Цена": 96.50,   "Сумма": 1930.00 }
+  ],
+  "Комментарий": "Джерело: сайт · зовнішній id web-2026-08-31-0142"
+}`;
+
+const MAPPING = [
+  ["Клієнт → назва", "Контрагент.Наименование", "з картки клієнта, без змін"],
+  ["ІПН / ЄДРПОУ", "Контрагент.ИНН", "перевіряється на довжину й контрольну суму"],
+  ["Договір", "ДоговорКонтрагента", "шукається за номером; якщо не знайдено — виняток"],
+  ["Артикул позиції", "Запасы.Номенклатура", "зіставляється за кодом, а не за назвою"],
+  ["Сума з ПДВ", "СуммаДокумента", "СуммаВключаетНДС = true"],
+  ["Зовнішній id", "Комментарий", "ключ ідемпотентності: за ним шукаємо дубль в УНФ"]
+];
+
+const CLIENTS = [
+  { id: "c1", name: "ФОП Литвиненко Р. О.", kind: "ФОП", code: "3187409255", orders: 7, turnover: 164380.00, debt: 0, last: "31.08.2026", sel: true },
+  { id: "c2", name: "ТОВ «Будмайстер Плюс»", kind: "ТОВ", code: "41870255", orders: 23, turnover: 892400.00, debt: 62400.00, last: "31.08.2026" },
+  { id: "c3", name: "ТОВ «Теплодім»", kind: "ТОВ", code: "39204817", orders: 11, turnover: 431200.00, debt: 0, last: "31.08.2026" },
+  { id: "c4", name: "Оксана Кравець", kind: "Роздріб", code: "—", orders: 2, turnover: 7310.00, debt: 0, last: "31.08.2026" },
+  { id: "c5", name: "ФОП Гнатюк С. В.", kind: "ФОП", code: "2947015588", orders: 5, turnover: 98750.00, debt: 0, last: "31.08.2026" }
+];
+
+const CLIENT_HISTORY = [
+  { id: "7419", d: "31.08.2026", s: 23146.00, st: "У дорозі", pay: "Оплачено" },
+  { id: "7386", d: "12.08.2026", s: 41200.00, st: "Закрито", pay: "Оплачено" },
+  { id: "7344", d: "29.07.2026", s: 18930.00, st: "Закрито", pay: "Оплачено" },
+  { id: "7301", d: "04.07.2026", s: 33740.00, st: "Закрито", pay: "Оплачено" },
+  { id: "7255", d: "17.06.2026", s: 22100.00, st: "Закрито", pay: "Оплачено" },
+  { id: "7198", d: "21.05.2026", s: 15264.00, st: "Закрито", pay: "Оплачено" },
+  { id: "7102", d: "12.03.2026", s: 10000.00, st: "Закрито", pay: "Оплачено" }
+];
+
+const CLIENT_FEED = [
+  { sys: true, who: "Оновлення картки клієнта", what: "додала замовлення № 7419 в історію, оборот за 2026 → 164 380,00 ₴", t: "31.08 12:21" },
+  { sys: true, who: "Перевірка даних", what: "нормалізувала телефон: «067 412 88 01» → +380 67 412-88-01", t: "31.08 09:26" },
+  { sys: false, who: "Ірина Ковальчук", what: "продовжила договір № 214/26 до 31.12.2026", t: "18.06 14:02" },
+  { sys: true, who: "Зіставлення номенклатури", what: "запам'ятала зіставлення «труба поліпропілен 25 армована» → PPR-20-25", t: "14.06 10:38", ai: true }
+];
+
+const AUTOS = [
+  { key: "web", name: "Приймання замовлень із сайту", desc: "Вебхук з gidrosvit.ua. Створює замовлення, дедуп за зовнішнім id.", lvl: 3, on: true, last: "31.08.2026, 10:47", limit: "—" },
+  { key: "crm", name: "Приймання замовлень із CRM", desc: "Забирає нові угоди з KeyCRM кожні 3 хв, переносить позиції й контакт.", lvl: 3, on: true, last: "31.08.2026, 10:45", limit: "—" },
+  { key: "check", name: "Перевірка клієнта і даних", desc: "8 перевірок: клієнт, ІПН/ЄДРПОУ, телефон, договір, ліміт, номенклатура, залишок, адреса.", lvl: 3, on: true, last: "31.08.2026, 10:47", limit: "перевірка нічого не змінює — тому рівень 3" },
+  { key: "draft", name: "Підготовка чернетки для 1С/УНФ", desc: "Збирає payload «Замовлення покупця» і «Видаткова накладна».", lvl: 2, on: true, last: "31.08.2026, 10:47", limit: "передача вимкнена: підключення не налаштоване", demo: true },
+  { key: "inv", name: "Формування рахунку", desc: "Готує рахунок-фактуру за підтвердженим замовленням.", lvl: 2, on: true, last: "31.08.2026, 10:12", limit: "без підтвердження понад 50 000 ₴" },
+  { key: "exc", name: "Передача винятків менеджеру", desc: "Класифікує проблему, призначає власника, ставить строк реакції.", lvl: 3, on: true, last: "31.08.2026, 10:33", limit: "—" },
+  { key: "cli", name: "Оновлення картки клієнта", desc: "Дописує замовлення в історію, перераховує оборот і залишок ліміту.", lvl: 3, on: true, last: "31.08.2026, 12:21", limit: "—" },
+  { key: "pay", name: "Звірка оплат із виписки", desc: "Шукає номер рахунку в призначенні платежу й закриває етап «Оплата».", lvl: 2, on: false, last: "за 24 години запусків не було", silent: true, limit: "—" }
+];
+
+const RUNS = [
+  { t: "31.08 10:47:12", a: "Приймання замовлень із CRM", mode: "Розклад", st: "ok", ent: "№ 7424 · ТОВ «Аквалайн»", dur: "1,8 с" },
+  { t: "31.08 10:33:04", a: "Передача винятків менеджеру", mode: "Тригер", st: "ok", ent: "№ 7423 · ТОВ «Будмайстер Плюс»", dur: "0,9 с" },
+  { t: "31.08 10:15:41", a: "Перевірка клієнта і даних", mode: "Тригер", st: "waiting", ent: "№ 7422 · ФОП Гнатюк С. В.", dur: "1,2 с" },
+  { t: "31.08 09:26:11", a: "Підготовка чернетки для 1С/УНФ", mode: "Тригер", st: "demo", ent: "№ 7419 · ФОП Литвиненко Р. О.", dur: "0,6 с", sel: true },
+  { t: "31.08 09:26:09", a: "Перевірка клієнта і даних", mode: "Тригер", st: "ok", ent: "№ 7419 · ФОП Литвиненко Р. О.", dur: "2,1 с" },
+  { t: "31.08 09:26:04", a: "Приймання замовлень із сайту", mode: "Вебхук", st: "ok", ent: "№ 7419 · ФОП Литвиненко Р. О.", dur: "0,4 с" },
+  { t: "31.08 07:02:55", a: "Підготовка чернетки для 1С/УНФ", mode: "Тригер", st: "fail", ent: "№ 7409 · ТОВ «Промбуд-Захід»", dur: "0,7 с" },
+  { t: "30.08 17:12:20", a: "Оновлення картки клієнта", mode: "Тригер", st: "ok", ent: "№ 7411 · ФОП Сидоренко І. П.", dur: "0,5 с", retry: "повтор запуску № 4471" }
+];
+const RUN_ST = { ok: ["b-ok", "Успішно"], fail: ["b-crit", "Помилка"], waiting: ["b-warn", "Чекає людину"],
+  demo: ["b-demo", "Чернетка · не передано"], run: ["b-info", "Виконується"] };
+
+const FAILED_RUN = {
+  id: "4602", a: "Підготовка чернетки для 1С/УНФ", ent: "№ 7409 · ТОВ «Промбуд-Захід»", t: "31.08.2026, 07:02:55",
+  steps: [
+    { n: 1, t: "Отримати замовлення з черги", st: "ok", io: "orders.id = 7409 · джерело: Prom.ua" },
+    { n: 2, t: "Перевірити ключ ідемпотентності", st: "ok", io: "external_id = prom-2026-08-31-0088 → чернетки з таким ключем немає" },
+    { n: 3, t: "Знайти контрагента", st: "ok", io: "ТОВ «Промбуд-Захід» знайдено за назвою, 1 збіг" },
+    { n: 4, t: "Зібрати реквізити контрагента", st: "fail", io: "ЄДРПОУ = null · обов'язковий реквізит для ЮрЛицо в УНФ" }
+  ],
+  human: "Крок 4 «Зібрати реквізити контрагента»: замовлення оформлено на юрособу, але ЄДРПОУ не вказано ні в замовленні, ні в картці клієнта.",
+  fix: "Виняток уже передано менеджеру, шаблон листа з запитом реквізитів підготовлено. Після заповнення ЄДРПОУ в картці клієнта повторіть запуск — чернетка збереться сама."
+};
+
+const DASH = {
+  updated: "31.08.2026, 12:44", period: "серпень 2026",
+  kpis: [
+    { k: "Замовлень сьогодні", v: "24", d: "+3 до вчора", tone: "ok", go: "queue" },
+    { k: "Пройшли без менеджера", v: "71 %", d: "ціль 80 % · було 44 % у липні", tone: "ok", go: "pipeline" },
+    { k: "У винятках", v: "6", d: "2 прострочені, найстаріший — 4 год", tone: "crit", go: "exceptions" },
+    { k: "Від замовлення до рахунку", v: "4:20", d: "хв:сек · було 38 хв уручну", tone: "ok", go: "pipeline" }
+  ],
+  spark: [18, 22, 27, 31, 24, 9, 4, 26, 29, 33, 28, 24, 11, 24],
+  attention: [
+    { tone: "demo", t: "Підключення до 1С/УНФ не налаштоване", s: "18 чернеток чекають передачі · це демонстраційний стенд", go: "drafts" },
+    { tone: "crit", t: "ТОВ «Будмайстер Плюс»: борг 62 400 ₴ понад ліміт", s: "два замовлення на 97 440 ₴ заблоковані", go: "exceptions" },
+    { tone: "warn", t: "3 замовлення без оплати понад 3 дні", s: "на 84 200 ₴ · найстаріше — № 7415, 4 дні", go: "pipeline" },
+    { tone: "warn", t: "«Звірка оплат із виписки» не запускалася 24 години", s: "тригер, найімовірніше, зупинено", go: "automation" }
+  ]
+};
+
+/* --------------------------------------------------------- стан */
+const S = {
+  screen: "queue", sel: "7419", seg: "new", role: "manager", killed: false,
+  states: {}, tab: "goods", pipeSel: null, excSel: 0, cliSel: "c1",
+  runQuery: "", confirmed: false, confirming: false, docsMade: true
+};
+const stateOf = k => S.states[k] || "ok";
+
+/* ------------------------------------------------------ утиліти */
+function toast(html, undo) {
+  const box = $("#toasts"), el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = `<span>${html}</span>` + (undo ? `<button type="button" data-undo="1">Скасувати</button>` : "");
+  box.appendChild(el);
+  const kill = () => el.remove();
+  if (undo) el.querySelector("[data-undo]").addEventListener("click", () => { undo(); kill(); });
+  setTimeout(kill, 6500);
+}
+const badge = (map, key) => { const [c, t] = map[key] || ["b-mute", key]; return `<span class="badge ${c}"><span class="dot"></span>${esc(t)}</span>`; };
+const aiMark = why => `<span class="ai" role="button" tabindex="0" data-ai="${esc(why)}" title="Звідки це значення">AI</span>`;
+
+function stateBlock(kind, key) {
+  if (kind === "loading") return `<div class="sklist">${'<div class="sk"></div>'.repeat(6)}</div>`;
+  if (kind === "empty") return `<div class="state"><h3>Порожньо — і це добре</h3><p>За обраними умовами записів немає. Черга розібрана, у роботі 42 замовлення.</p><button class="btn" data-go="pipeline">Подивитися воронку</button></div>`;
+  if (kind === "error") return `<div class="state"><h3>Не вдалося завантажити дані</h3><p>Сервіс не відповідає більше 30 секунд. Фільтри й введене збережено — після повтору повернетесь у той самий зріз.</p><button class="btn primary" data-retry="${esc(key)}">Повторити</button></div>`;
+  if (kind === "noperm") return `<div class="state"><h3>Немає доступу до цього розділу</h3><p>Розділ доступний керівнику відділу й адміністратору. Ваша роль — менеджер клієнтського сервісу.</p><button class="btn" data-ask="1">Запросити доступ</button></div>`;
+  return "";
+}
+function shead(title, sub, key, extra) {
+  const st = stateOf(key);
+  return `<div class="shead">
+    <div><h1>${title}</h1><div class="sub">${sub}</div></div>
+    ${extra || ""}
+    <div class="statepick">
+      <label class="u" for="st-${key}">Стан екрана</label>
+      <select id="st-${key}" data-state="${key}">
+        ${["ok:робочий", "loading:завантаження", "empty:порожньо", "error:помилка", "noperm:немає доступу"]
+          .map(o => { const [v, l] = o.split(":"); return `<option value="${v}"${st === v ? " selected" : ""}>${l}</option>`; }).join("")}
+      </select>
+    </div>
+  </div>`;
+}
+
+/* ------------------------------------------------------- екрани */
+function scrQueue() {
+  const st = stateOf("queue");
+  const head = shead("Черга замовлень", "Сортування — за строком реакції. Норма: рахунок протягом 30 хвилин після замовлення.", "queue");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "queue")}</div>`;
+
+  const segs = [
+    { k: "new", t: "Нові", n: ORDERS.filter(o => o.seg === "new").length },
+    { k: "exc", t: "З винятком", n: ORDERS.filter(o => o.seg === "exc").length, alarm: true },
+    { k: "work", t: "У роботі", n: ORDERS.filter(o => o.seg === "work").length }
+  ];
+  const list = ORDERS.filter(o => o.seg === S.seg);
+  const o = list.find(x => x.id === S.sel) || list[0];
+
+  const rows = list.length ? list.map(x => `
+    <button type="button" class="qrow" role="option" data-pick="${x.id}" aria-selected="${x.id === (o && o.id)}">
+      <span class="l1"><span class="onum">№ ${esc(x.id)}</span><span class="src">${esc(x.src)}</span><span class="sum num">${money(x.sum)}</span></span>
+      <span class="l2">${esc(x.client)} <span style="color:var(--ink-3)">·</span> ${esc(x.who)} <span style="color:var(--ink-3)">·</span> ${x.pos} поз.</span>
+      <span class="l3">
+        ${x.exc
+          ? `<span class="badge b-${x.lvl}"><span class="dot"></span>${esc(x.exc.split(":")[0])}</span>`
+          : `<span class="badge b-ok"><span class="dot"></span>${esc(x.note)}</span>`}
+        ${x.ai ? aiMark("У цьому замовленні модель розпізнавала адресу або шукала дубль") : ""}
+        <span class="age${x.late ? " late" : ""}">${esc(x.age)}</span>
+      </span>
+    </button>`).join("") : `<div class="state"><h3>Немає замовлень у цьому сегменті</h3><p>Спробуйте інший сегмент угорі.</p></div>`;
+
+  const det = o ? `<div style="padding:16px 18px 26px">
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><h3>Замовлення № ${esc(o.id)}</h3><span class="src">${esc(o.src)}</span>
+          ${o.exc ? `<span class="badge b-${o.lvl}"><span class="dot"></span>Виняток</span>` : `<span class="badge b-ok"><span class="dot"></span>Перевірки пройдено</span>`}</div>
+        <div class="cb" style="padding:0">
+          <dl>
+            <div class="frow"><dt>Клієнт</dt><dd>${esc(o.client)} <span class="badge b-mute"><span class="dot"></span>${esc(o.who)}</span></dd></div>
+            <div class="frow"><dt>Надійшло</dt><dd>${esc(o.t)} · ${esc(o.src)}</dd></div>
+            <div class="frow"><dt>Позицій</dt><dd>${o.pos}</dd></div>
+            <div class="frow"><dt>Сума з ПДВ</dt><dd class="num" style="font-weight:600">${money(o.sum)} ₴</dd></div>
+            <div class="frow"><dt>У черзі</dt><dd class="${o.late ? "num" : "num"}" style="${o.late ? "color:var(--crit); font-weight:600" : ""}">${esc(o.age)}</dd></div>
+          </dl>
+        </div>
+      </div>
+      ${o.exc
+        ? `<div class="note ${o.lvl === "crit" ? "crit" : "warn"}" style="margin-bottom:12px"><b>Що зупинило автоматику:</b> ${esc(o.exc)}</div>`
+        : `<div class="note info" style="margin-bottom:12px"><b>Автоматика дійшла до кінця.</b> Клієнта знайдено, дані перевірено, чернетка для 1С/УНФ зібрана. Залишилось підтвердження менеджера.</div>`}
+      <div style="display:flex; gap:9px; flex-wrap:wrap">
+        <button class="btn primary" data-open-order="${esc(o.id)}">Відкрити картку замовлення</button>
+        ${o.exc ? `<button class="btn" data-go="exceptions">Перейти у винятки</button>` : ``}
+        <button class="btn" data-handoff="1">Передати колезі</button>
+      </div>
+      <p style="color:var(--ink-3); font-size:12px; margin-top:12px">Клавіатура: <span class="kbd">↑</span> <span class="kbd">↓</span> — рух, <span class="kbd">Enter</span> — відкрити картку.</p>
+    </div>` : `<div class="state"><h3>Нічого не вибрано</h3><p>Оберіть замовлення зліва.</p></div>`;
+
+  return head + `<div class="body flush"><div class="split">
+    <div class="left">
+      <div class="seg" role="tablist">${segs.map(s => `<button type="button" class="segbtn${s.alarm ? " alarm" : ""}" data-seg="${s.k}" aria-pressed="${S.seg === s.k}">${s.t} <i>${s.n}</i></button>`).join("")}</div>
+      <div role="listbox" aria-label="Замовлення">${rows}</div>
+    </div>
+    <div class="right">${det}</div>
+  </div></div>`;
+}
+
+function scrOrder() {
+  const o = ORDER;
+  const head = `<div class="shead">
+    <div><h1>Замовлення № ${esc(o.id)}</h1>
+      <div class="sub">${esc(o.src)} · ${esc(o.created)} · зовнішній id <span class="num">${esc(o.extId)}</span> · менеджер ${esc(o.client.manager)}</div></div>
+    <div class="statepick">
+      <button class="btn sm" data-go="queue">← До черги</button>
+      <button class="btn sm" data-next-order="1">Наступне →</button>
+    </div>
+  </div>`;
+
+  const rail = `<div class="stagerail">${o.stages.map(s => `
+    <div class="stage ${s.st}">
+      <span class="sn"><i>${s.n}</i><b>${esc(s.name)}</b></span>
+      <span class="meta">${s.meta}</span>
+      <span class="who">${s.st === "done" ? "✓ виконано" : s.st === "active" ? "● виконується" : "◇ чернетка"} · ${esc(s.who)}</span>
+    </div>`).join("")}</div>`;
+
+  const goods = `<div class="tblwrap"><table class="tbl">
+    <thead><tr><th class="r">№</th><th style="width:46%">Номенклатура</th><th class="r">К-сть</th><th class="r">Ціна</th><th class="r">Сума</th><th>Залишок</th></tr></thead>
+    <tbody>${o.lines.map(l => `<tr>
+      <td class="r num">${l.n}</td>
+      <td>${esc(l.name)}<span class="raw"><span class="idc">${esc(l.sku)}</span> · ${l.raw ? `з сайту «${esc(l.raw)}», зіставлено за ${esc(l.match)}` : `зіставлено за ${esc(l.match)}`}</span></td>
+      <td class="r num">${l.qty} ${esc(l.unit)}</td>
+      <td class="r num">${money(l.price)}</td>
+      <td class="r num">${money(l.sum)}</td>
+      <td><span class="badge b-ok"><span class="dot"></span>${l.stock} на складі</span></td>
+    </tr>`).join("")}</tbody>
+    <tfoot>
+      <tr><td colspan="4" class="r">Без ПДВ</td><td class="r num">${money(o.base)}</td><td></td></tr>
+      <tr><td colspan="4" class="r">ПДВ 20 %</td><td class="r num">${money(o.vat)}</td><td></td></tr>
+      <tr><td colspan="4" class="r">Усього до сплати</td><td class="r num">${money(o.total)}</td><td></td></tr>
+    </tfoot>
+  </table></div>`;
+
+  const invoice = `<div class="doc">
+    <h4>РАХУНОК-ФАКТУРА № СФ-3391</h4>
+    <div class="meta">від 31 серпня 2026 р.</div>
+    <div class="party"><b>Постачальник:</b> ТОВ «Гідросвіт», ЄДРПОУ 40218755, IBAN UA61 3052 9900 0002 6001 2345 6789, ІПН 402187526543</div>
+    <div class="party"><b>Покупець:</b> ${esc(o.client.name)}, ІПН ${esc(o.client.ipn)}</div>
+    <div class="party"><b>Підстава:</b> Договір ${esc(o.client.contract)}</div>
+    <table><thead><tr><th>№</th><th>Найменування</th><th class="r">К-сть</th><th class="r">Ціна</th><th class="r">Сума</th></tr></thead><tbody>
+      ${o.lines.map(l => `<tr><td>${l.n}</td><td>${esc(l.name)}</td><td class="r">${l.qty}</td><td class="r">${money(l.price)}</td><td class="r">${money(l.sum)}</td></tr>`).join("")}
+    </tbody></table>
+    <div class="tot">Разом без ПДВ: <b>${money(o.base)}</b> грн<br>ПДВ 20 %: <b>${money(o.vat)}</b> грн<br>Усього до сплати: <b>${money(o.total)}</b> грн</div>
+    <div class="sig"><span>Виписав(ла) ______________</span><span>М. П.</span></div>
+    <div class="stamp">Демонстраційний зразок · тестові дані</div>
+  </div>`;
+
+  const waybill = `<div class="doc" style="margin-top:14px">
+    <h4>ВИДАТКОВА НАКЛАДНА № ВН-3391</h4>
+    <div class="meta">від 31 серпня 2026 р. · <b>чернетка, не передана в 1С/УНФ</b></div>
+    <div class="party"><b>Постачальник:</b> ТОВ «Гідросвіт», ЄДРПОУ 40218755</div>
+    <div class="party"><b>Отримувач:</b> ${esc(o.client.name)}, ІПН ${esc(o.client.ipn)}</div>
+    <div class="party"><b>Доставка:</b> ${esc(o.delivery.carrier)}, ${esc(o.delivery.city)}, ${esc(o.delivery.branch)} · ТТН ${esc(o.delivery.ttn)}</div>
+    <table><thead><tr><th>№</th><th>Найменування</th><th class="r">К-сть</th><th class="r">Сума</th></tr></thead><tbody>
+      ${o.lines.map(l => `<tr><td>${l.n}</td><td>${esc(l.name)}</td><td class="r">${l.qty} ${esc(l.unit)}</td><td class="r">${money(l.sum)}</td></tr>`).join("")}
+    </tbody></table>
+    <div class="tot">Усього з ПДВ: <b>${money(o.total)}</b> грн</div>
+    <div class="sig"><span>Відпустив ______________</span><span>Отримав ______________</span></div>
+    <div class="stamp">Демонстраційний зразок · тестові дані</div>
+  </div>`;
+
+  const docs = `
+    <div class="note demo" style="margin-bottom:12px">
+      <b>Документи згенеровані системою й показані як зразок.</b> Рахунок надіслано клієнту на пошту.
+      Видаткова накладна залишається <b>чернеткою</b>: щоб вона стала документом обліку, її має прийняти 1С/УНФ,
+      а підключення на цьому стенді не налаштоване.
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:13px">
+      <button class="btn sm">Завантажити PDF</button>
+      <button class="btn sm">Надіслати клієнту повторно</button>
+      <button class="btn sm" data-go="drafts">Показати чернетку для 1С/УНФ</button>
+    </div>
+    ${invoice}${waybill}`;
+
+  const feed = `<div class="card"><div class="feed">${o.feed.map(f => `
+    <div class="fitem${f.sys ? " sys" : ""}">
+      <span class="av">${f.sys ? "◆" : esc(f.who.split(" ").map(w => w[0]).join("").slice(0, 2))}</span>
+      <span>
+        <span class="who">${esc(f.who)}${f.sys ? ` <span class="badge b-mute" style="font-size:10px"><span class="dot"></span>система</span>` : ""}${f.ai ? " " + aiMark("Крок виконано мовною моделлю: розпізнавання адреси з вільного тексту") : ""}</span>
+        <span class="what">${esc(f.what)}</span>
+        ${f.basis ? `<span class="basis">Підстава: ${esc(f.basis)}</span>` : ""}
+      </span>
+      <time>${esc(f.t)}</time>
+    </div>`).join("")}</div></div>`;
+
+  const tabBody = S.tab === "goods" ? goods : S.tab === "docs" ? docs : feed;
+
+  return head + `<div class="body">
+    ${rail}
+    <div class="ordergrid" style="margin-top:13px">
+      <div class="c1" style="display:flex; flex-direction:column; gap:13px">
+        <div class="card">
+          <div class="ch"><h3>Клієнт</h3><button class="btn sm quiet" data-go="clients">Картка →</button></div>
+          <dl>
+            <div class="frow"><dt>Найменування</dt><dd><span class="trunc">${esc(o.client.short)}</span></dd></div>
+            <div class="frow"><dt>Тип</dt><dd>${esc(o.client.kind)}</dd></div>
+            <div class="frow"><dt>ІПН</dt><dd class="num">${esc(o.client.ipn)}</dd></div>
+            <div class="frow"><dt>Телефон</dt><dd class="num">${esc(o.client.phone)}</dd></div>
+            <div class="frow"><dt>Пошта</dt><dd><span class="trunc">${esc(o.client.email)}</span></dd></div>
+            <div class="frow"><dt>Договір</dt><dd>${esc(o.client.contract)}</dd></div>
+            <div class="frow"><dt>Кредитний ліміт</dt><dd><span class="num">${money(o.client.limit)}</span> ₴ <span class="badge b-ok"><span class="dot"></span>борг 0</span></dd></div>
+            <div class="frow"><dt>Історія</dt><dd>${o.client.orders} замовлень з ${esc(o.client.since)}</dd></div>
+          </dl>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Перевірка даних</h3><span class="badge b-ok"><span class="dot"></span>7 з 8</span></div>
+          <div class="checks">${o.checks.map(c => `
+            <div class="check ${c.s}">
+              <span class="mk" aria-hidden="true">${c.s === "ok" ? "✓" : c.s === "warn" ? "▲" : "✕"}</span>
+              <span><span class="t">${esc(c.t)}</span>${c.ai ? " " + aiMark(c.ai) : ""}<span class="d">${esc(c.d)}</span></span>
+            </div>`).join("")}</div>
+        </div>
+      </div>
+
+      <div class="c2">
+        <div class="card">
+          <div class="tabs" role="tablist">
+            <button class="tab" role="tab" data-tab="goods" aria-selected="${S.tab === "goods"}">Товари · 3</button>
+            <button class="tab" role="tab" data-tab="docs" aria-selected="${S.tab === "docs"}">Документи · 2</button>
+            <button class="tab" role="tab" data-tab="feed" aria-selected="${S.tab === "feed"}">Активність · ${o.feed.length}</button>
+          </div>
+          <div class="cb">${tabBody}</div>
+        </div>
+      </div>
+
+      <div class="c3" style="display:flex; flex-direction:column; gap:13px">
+        <div class="card"><div class="cb" style="display:flex; flex-direction:column; gap:9px">
+          <button class="btn primary" id="confirmbtn" ${S.confirmed ? "disabled" : ""}>${S.confirmed ? "Замовлення підтверджено" : "Підтвердити замовлення"}</button>
+          <button class="btn">Зберегти зміни</button>
+          <button class="btn danger" data-cancel-order="1">Скасувати замовлення</button>
+          <span style="color:var(--ink-3); font-size:11.5px">Ctrl+Enter — підтвердити</span>
+        </div></div>
+        <div class="card">
+          <div class="ch"><h3>Чернетка для 1С/УНФ</h3>${badge(RUN_ST, "demo")}</div>
+          <div class="cb">
+            <div class="note demo" style="margin-bottom:11px">Підключення до 1С/УНФ на цьому стенді <b>не налаштоване</b>. Система зібрала payload і тримає його готовим — передачі не було.</div>
+            <dl style="margin:0 -13px">
+              <div class="frow"><dt>Документ</dt><dd>Замовлення покупця</dd></div>
+              <div class="frow"><dt>Номер</dt><dd class="num">ВЕБ-7419</dd></div>
+              <div class="frow"><dt>Ключ дубля</dt><dd class="num" style="font-size:11px"><span class="trunc">web-2026-08-31-0142</span></dd></div>
+              <div class="frow"><dt>Стан</dt><dd>чернетка готова, не передано</dd></div>
+            </dl>
+            <button class="btn sm" style="margin-top:11px" data-payload="1">Переглянути payload</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ch"><h3>Доставка</h3></div>
+          <dl>
+            <div class="frow"><dt>Перевізник</dt><dd>${esc(o.delivery.carrier)}</dd></div>
+            <div class="frow"><dt>Відділення</dt><dd><span class="trunc">${esc(o.delivery.branch)}</span> ${aiMark("Відділення визначено з тексту «Львів НП 12» у полі «Коментар»")}</dd></div>
+            <div class="frow"><dt>Отримувач</dt><dd><span class="trunc">${esc(o.delivery.recipient)}</span></dd></div>
+            <div class="frow"><dt>ТТН</dt><dd class="num">${esc(o.delivery.ttn)}</dd></div>
+            <div class="frow"><dt>Статус</dt><dd>${esc(o.delivery.status)}</dd></div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function scrExceptions() {
+  const st = stateOf("exceptions");
+  const head = shead("Винятки", "Усе, чого автоматика не бере на себе: рішення про гроші, товар і клієнта. У кожного винятку є власник і строк.", "exceptions");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "exceptions")}</div>`;
+  const e = EXCEPTIONS[S.excSel];
+
+  return head + `<div class="body">
+    <div class="note info" style="margin-bottom:13px">
+      Автоматика не намагається «здогадатися» в цих шести випадках. Вона доводить замовлення до межі,
+      формулює проблему й передає її людині — з готовим варіантом рішення, але без самого рішення.
+    </div>
+    <div class="tblwrap" style="margin-bottom:14px"><table class="tbl">
+      <thead><tr><th>Замовлення</th><th>Тип</th><th>Клієнт</th><th class="r">Сума, ₴</th><th>Кому передано</th><th>Строк</th><th></th></tr></thead>
+      <tbody>${EXCEPTIONS.map((x, i) => `<tr aria-selected="${i === S.excSel}">
+        <td class="idc">№ ${esc(x.id)}</td>
+        <td><span class="badge b-${x.lvl}"><span class="dot"></span>${esc(x.type)}</span>${x.ai ? " " + aiMark("Виняток знайдено моделлю: пошук дубля або розбір адреси") : ""}</td>
+        <td><span class="trunc">${esc(x.client)}</span></td>
+        <td class="r num">${money(x.sum)}</td>
+        <td>${esc(x.to)}</td>
+        <td class="num" style="${x.late ? "color:var(--crit); font-weight:600" : ""}">${esc(x.sla)}</td>
+        <td><button class="btn sm" data-exc="${i}">Розібрати</button></td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+
+    <div class="card">
+      <div class="ch"><h3>№ ${esc(e.id)} · ${esc(e.type)}</h3>
+        <span class="badge b-${e.lvl}"><span class="dot"></span>${e.lvl === "crit" ? "блокує замовлення" : "потребує рішення"}</span>
+        <span style="margin-left:auto; color:var(--ink-3); font-size:12px">${esc(e.client)} · ${money(e.sum)} ₴</span></div>
+      <div class="cb">
+        <div class="note ${e.lvl === "crit" ? "crit" : "warn"}" style="margin-bottom:12px"><b>Що сталося.</b> ${esc(e.why)}</div>
+        <div class="note" style="margin-bottom:13px"><b>Що можна зробити.</b> ${esc(e.fix)}<br>
+          <span style="color:var(--ink-3)">Це варіанти, а не вибір системи. Рішення ухвалює ${esc(e.to)}.</span></div>
+        <div style="display:flex; gap:9px; flex-wrap:wrap">
+          <button class="btn primary" data-exc-resolve="1">Вирішено — повернути в потік</button>
+          <button class="btn" data-exc-escalate="1">Передати керівнику</button>
+          <button class="btn" data-exc-snooze="1">Відкласти до завтра</button>
+          <span style="flex:1"></span>
+          <button class="btn danger" data-exc-cancel="1">Скасувати замовлення</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function scrPipeline() {
+  const st = stateOf("pipeline");
+  const head = shead("Воронка виконання", "Де стоїть кожне замовлення й де затор. Поріг протухання заданий на кожен етап окремо.", "pipeline");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "pipeline")}</div>`;
+  return head + `<div class="body">
+    <div class="board">${PIPELINE.map(c => `
+      <section class="col">
+        <header>
+          <div class="t">${esc(c.title)} <span class="badge b-mute"><span class="dot"></span>${c.cards.length}</span></div>
+          <div class="s">${esc(c.hint)} · ${money(c.cards.reduce((a, x) => a + x.s, 0))} ₴</div>
+        </header>
+        <div class="stack">${c.cards.length ? c.cards.map(k => `
+          <button class="kcard${k.stale ? " stale" : ""}" data-open-order="${esc(k.id)}">
+            <span class="kt">№ ${esc(k.id)}</span>
+            <span class="kn">${esc(k.c)}</span>
+            <span class="kf">
+              <span class="badge ${k.stale ? "b-crit" : "b-mute"}"><span class="dot"></span>${esc(k.m)}</span>
+              <span class="sum num">${money(k.s)}</span>
+            </span>
+            <span class="kf" style="color:var(--ink-2); font-size:11.5px">Далі: ${esc(k.next)}</span>
+          </button>`).join("") : `<div class="emptycol">Порожньо на цьому етапі</div>`}</div>
+      </section>`).join("")}</div>
+    <p style="color:var(--ink-3); font-size:12px; margin-top:12px">
+      Перетягування мишею дублюється меню «Перемістити на етап» на картці — етап змінюється й з клавіатури.
+      Червона смуга ліворуч означає, що замовлення стоїть довше за поріг етапу.
+    </p>
+  </div>`;
+}
+
+function scrDrafts() {
+  const st = stateOf("drafts");
+  const head = shead("Чернетки для 1С/УНФ", "Документи, підготовлені до передачі в облікову систему. Стан підключення — угорі.", "drafts");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "drafts")}</div>`;
+
+  const D_ST = { ready: ["b-demo", "Чернетка · не передано"], err: ["b-crit", "Помилка підготовки"], sent: ["b-ok", "Передано в УНФ"] };
+  return head + `<div class="body">
+    <div class="note demo" style="margin-bottom:14px">
+      <b>Підключення до 1С/УНФ не налаштоване — це демонстраційний стенд.</b><br>
+      Система готує документи й тримає їх у стані «чернетка». Кнопки «Передати» немає навмисно:
+      малювати неіснуючу інтеграцію означало б показувати те, чого немає.
+      Коли з'явиться доступ до бази — сюди додається один крок передачі, решта потоку не змінюється.
+    </div>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); margin-bottom:14px">
+      <div class="card"><div class="ch"><h3>Що піде в УНФ — payload</h3><span class="badge b-mute"><span class="dot"></span>№ 7419</span></div>
+        <div class="cb"><pre class="code">${esc(PAYLOAD)}</pre></div>
+      </div>
+      <div class="card"><div class="ch"><h3>Відповідність полів</h3></div>
+        <div class="tblwrap" style="border:0"><table class="tbl">
+          <thead><tr><th>У нас</th><th>Реквізит УНФ</th><th>Як заповнюється</th></tr></thead>
+          <tbody>${MAPPING.map(m => `<tr><td>${esc(m[0])}</td><td class="idc">${esc(m[1])}</td><td style="color:var(--ink-2)">${esc(m[2])}</td></tr>`).join("")}</tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <span class="badge b-demo"><span class="dot"></span>чернеток готово: 18</span>
+      <span class="badge b-crit"><span class="dot"></span>помилок підготовки: 1</span>
+      <span class="badge b-mute"><span class="dot"></span>передано: 0 — підключення немає</span>
+      <span class="count">Показано ${DRAFTS.length} з 19</span>
+    </div>
+    <div class="tblwrap"><table class="tbl">
+      <thead><tr><th>Замовлення</th><th>Документ</th><th>Клієнт</th><th class="r">Сума, ₴</th><th>Підготовлено</th><th>Стан</th></tr></thead>
+      <tbody>${DRAFTS.map(d => `<tr>
+        <td class="idc">№ ${esc(d.id)}</td><td>${esc(d.doc)}</td>
+        <td><span class="trunc">${esc(d.client)}</span></td>
+        <td class="r num">${money(d.sum)}</td><td class="num">${esc(d.t)}</td>
+        <td>${badge(D_ST, d.st)}${d.err ? `<span class="raw">${esc(d.err)}</span>` : ""}</td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function scrClients() {
+  const st = stateOf("clients");
+  const head = shead("Клієнти", "База клієнтів оновлюється автоматично після кожного замовлення: історія, оборот, залишок ліміту.", "clients");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "clients")}</div>`;
+  const c = CLIENTS.find(x => x.id === S.cliSel) || CLIENTS[0];
+  const isLyt = c.id === "c1";
+
+  return head + `<div class="body flush"><div class="split">
+    <div class="left">
+      <div class="seg"><button class="segbtn" aria-pressed="true">Усі <i>312</i></button>
+        <button class="segbtn">Юрособи <i>141</i></button><button class="segbtn">ФОП <i>96</i></button>
+        <button class="segbtn alarm">З боргом <i>7</i></button></div>
+      ${CLIENTS.map(x => `<button type="button" class="qrow" data-cli="${x.id}" aria-selected="${x.id === c.id}">
+        <span class="l1"><span class="onum" style="font-family:var(--sans); font-weight:600">${esc(x.name)}</span><span class="sum num">${money(x.turnover)}</span></span>
+        <span class="l2">${esc(x.kind)} <span style="color:var(--ink-3)">·</span> <span class="num">${esc(x.code)}</span> <span style="color:var(--ink-3)">·</span> ${x.orders} зам.</span>
+        <span class="l3">${x.debt
+          ? `<span class="badge b-crit"><span class="dot"></span>борг ${money(x.debt)} ₴</span>`
+          : `<span class="badge b-ok"><span class="dot"></span>боргу немає</span>`}
+          <span class="age">останнє ${esc(x.last)}</span></span>
+      </button>`).join("")}
+    </div>
+    <div class="right"><div style="padding:16px 18px 26px; display:flex; flex-direction:column; gap:13px">
+      <div class="card">
+        <div class="ch"><h3>${esc(c.name)}</h3><span class="badge b-mute"><span class="dot"></span>${esc(c.kind)}</span>
+          ${c.debt ? `<span class="badge b-crit"><span class="dot"></span>борг ${money(c.debt)} ₴</span>` : `<span class="badge b-ok"><span class="dot"></span>боргу немає</span>`}</div>
+        <dl>
+          <div class="frow"><dt>${c.kind === "ТОВ" ? "ЄДРПОУ" : "ІПН"}</dt><dd class="num">${esc(c.code)}</dd></div>
+          <div class="frow"><dt>Замовлень</dt><dd>${c.orders}</dd></div>
+          <div class="frow"><dt>Оборот за 2026</dt><dd class="num" style="font-weight:600">${money(c.turnover)} ₴</dd></div>
+          <div class="frow"><dt>Останнє замовлення</dt><dd class="num">${esc(c.last)}</dd></div>
+          <div class="frow"><dt>Менеджер</dt><dd>Ірина Ковальчук</dd></div>
+        </dl>
+      </div>
+
+      ${isLyt ? `
+      <div class="card">
+        <div class="ch"><h3>Історія замовлень</h3><span class="count" style="margin-left:auto">Показано 7 з 7</span></div>
+        <div class="tblwrap" style="border:0"><table class="tbl">
+          <thead><tr><th>Замовлення</th><th>Дата</th><th class="r">Сума, ₴</th><th>Оплата</th><th>Стан</th><th></th></tr></thead>
+          <tbody>${CLIENT_HISTORY.map(h => `<tr>
+            <td class="idc">№ ${esc(h.id)}</td><td class="num">${esc(h.d)}</td>
+            <td class="r num">${money(h.s)}</td>
+            <td><span class="badge b-ok"><span class="dot"></span>${esc(h.pay)}</span></td>
+            <td>${h.st === "Закрито" ? `<span class="badge b-mute"><span class="dot"></span>Закрито</span>` : `<span class="badge b-info"><span class="dot"></span>${esc(h.st)}</span>`}</td>
+            <td><button class="btn sm quiet" data-open-order="${esc(h.id)}">Відкрити</button></td>
+          </tr>`).join("")}</tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <div class="ch"><h3>Що система змінила в картці</h3></div>
+        <div class="feed">${CLIENT_FEED.map(f => `
+          <div class="fitem${f.sys ? " sys" : ""}">
+            <span class="av">${f.sys ? "◆" : "ІК"}</span>
+            <span><span class="who">${esc(f.who)}${f.ai ? " " + aiMark("Зіставлення запропонувала модель, підтвердила людина — тепер працює як правило") : ""}</span>
+              <span class="what">${esc(f.what)}</span></span>
+            <time>${esc(f.t)}</time>
+          </div>`).join("")}</div>
+      </div>` : `
+      <div class="state"><h3>Історія показана для ФОП Литвиненко Р. О.</h3>
+        <p>У прототипі детально заповнена одна картка — щоб не вигадувати сотні рядків фальшивих даних. Оберіть її в списку зліва.</p>
+        <button class="btn" data-cli="c1">Відкрити ФОП Литвиненко Р. О.</button></div>`}
+    </div></div>
+  </div></div>`;
+}
+
+function scrAutomation() {
+  const st = stateOf("automation");
+  const head = shead("Автоматизації та історія запусків", "Що система робить сама, що вже зробила і як полагодити те, що впало. Історію зберігаємо 90 днів.", "automation");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "automation")}</div>`;
+  const q = S.runQuery.trim().toLowerCase();
+  const runs = q ? RUNS.filter(r => (r.ent + " " + r.a).toLowerCase().includes(q)) : RUNS;
+
+  return head + `<div class="body">
+    ${S.killed ? `<div class="note crit" style="margin-bottom:13px"><b>Автоматику зупинено.</b> Замовлення приймаються й накопичуються в черзі, але рахунки не формуються й листи не йдуть. Увімкнути може будь-який менеджер.</div>` : ""}
+    <div class="card" style="margin-bottom:16px">
+      <div class="ch"><h3>Автоматизації</h3><span class="badge b-mute"><span class="dot"></span>рівень автономії — налаштування, а не властивість коду</span></div>
+      ${AUTOS.map(a => `<div class="autorow">
+        <div>
+          <span class="an">${esc(a.name)}${a.demo ? ` <span class="badge b-demo"><span class="dot"></span>демо-режим</span>` : ""}</span>
+          <span class="ad">${esc(a.desc)}</span>
+          <span class="ad" style="color:var(--ink-3); font-size:11.5px">Обмеження: ${esc(a.limit)} · Останній запуск: ${a.silent ? `<b style="color:var(--crit)">${esc(a.last)}</b>` : esc(a.last)}</span>
+        </div>
+        <div class="lvl" role="group" aria-label="Рівень автономії: ${esc(a.name)}">
+          <button data-lvl="${a.key}:1" aria-pressed="${a.lvl === 1}" title="Готує, робить людина">радить</button>
+          <button data-lvl="${a.key}:2" aria-pressed="${a.lvl === 2}" title="Робить усе, крім останнього кроку">з підтвердженням</button>
+          <button data-lvl="${a.key}:3" aria-pressed="${a.lvl === 3}" title="Робить сама, є kill switch">сама</button>
+        </div>
+        <button class="sw" role="switch" aria-checked="${a.on && !S.killed}" aria-label="Увімкнено: ${esc(a.name)}" data-toggle="${a.key}"></button>
+        <button class="btn sm" data-runsearch="${esc(a.name)}">Запуски</button>
+      </div>`).join("")}
+    </div>
+
+    <div class="toolbar">
+      <div class="searchwrap" style="max-width:340px">
+        <span class="mag" aria-hidden="true">⌕</span>
+        <input id="runq" value="${esc(S.runQuery)}" placeholder="Що було із замовленням 7419…" aria-label="Пошук запусків">
+      </div>
+      <span class="badge b-ok"><span class="dot"></span>успішних за 24 год: 186</span>
+      <span class="badge b-crit"><span class="dot"></span>помилок: 1</span>
+      <span class="badge b-demo"><span class="dot"></span>чернеток без передачі: 18</span>
+      <span class="count">Показано ${runs.length} з 742</span>
+    </div>
+
+    <div class="tblwrap" style="margin-bottom:14px"><table class="tbl">
+      <thead><tr><th>Час</th><th>Автоматизація</th><th>Режим</th><th>Запис</th><th>Тривалість</th><th>Стан</th><th></th></tr></thead>
+      <tbody>${runs.length ? runs.map(r => `<tr aria-selected="${!!r.sel}">
+        <td class="num">${esc(r.t)}</td><td>${esc(r.a)}</td><td>${esc(r.mode)}</td>
+        <td class="idc">${esc(r.ent)}${r.retry ? `<span class="raw">${esc(r.retry)}</span>` : ""}</td>
+        <td class="num">${esc(r.dur)}</td><td>${badge(RUN_ST, r.st)}</td>
+        <td>${r.st === "fail" ? `<button class="btn sm" data-run="1">Розібрати</button>` : ""}</td>
+      </tr>`).join("") : `<tr><td colspan="7"><div class="state"><h3>Запусків за цим запитом немає</h3><p>Спробуйте номер замовлення без слова «№» або оберіть іншу автоматизацію.</p></div></td></tr>`}</tbody>
+    </table></div>
+
+    <div class="card">
+      <div class="ch"><h3>Запуск № ${esc(FAILED_RUN.id)} · ${esc(FAILED_RUN.a)}</h3>${badge(RUN_ST, "fail")}
+        <span style="color:var(--ink-3); font-size:12px; margin-left:auto">${esc(FAILED_RUN.ent)} · ${esc(FAILED_RUN.t)}</span></div>
+      <div class="cb">
+        <div class="note crit" style="margin-bottom:13px"><b>${esc(FAILED_RUN.human)}</b><br><br>Що зробити: ${esc(FAILED_RUN.fix)}</div>
+        <div class="steps">${FAILED_RUN.steps.map(s => `<div class="step ${s.st === "fail" ? "fail" : ""}">
+          <span class="n">${s.n}</span>
+          <span>${esc(s.t)}<span class="io">${esc(s.io)}</span></span>
+          <span>${badge(RUN_ST, s.st === "fail" ? "fail" : "ok")}</span>
+        </div>`).join("")}</div>
+        <div style="display:flex; gap:9px; margin-top:14px; flex-wrap:wrap">
+          <button class="btn primary" data-retry-run="orig">Повторити з вихідними даними</button>
+          <button class="btn" data-retry-run="cur">Повторити з поточними даними</button>
+          <button class="btn quiet">Показати технічні деталі</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function scrDashboard() {
+  const st = stateOf("dashboard");
+  const head = shead("Панель", `Дані станом на ${esc(DASH.updated)} · період: ${esc(DASH.period)}`, "dashboard");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "dashboard")}</div>`;
+  const max = Math.max(...DASH.spark);
+
+  return head + `<div class="body">
+    <div class="kpis" style="margin-bottom:14px">${DASH.kpis.map(k => `
+      <button class="kpi" data-go="${k.go}">
+        <span class="k">${esc(k.k)}</span>
+        <span class="v">${esc(k.v)}</span>
+        <span class="badge b-${k.tone}"><span class="dot"></span>${esc(k.d)}</span>
+      </button>`).join("")}</div>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      <div class="card"><div class="ch"><h3>Замовлень на день, останні 14 днів</h3></div>
+        <div class="cb">
+          <div class="spark">${DASH.spark.map((v, i) => `<i class="${i >= 12 ? "hi" : ""}" style="height:${Math.round(v / max * 100)}%" title="${v} зам."></i>`).join("")}</div>
+          <p style="color:var(--ink-3); font-size:11.5px; margin:9px 0 0">Провали 24.08 і 30.08 — вихідні. Пік 27.08 — розсилка по акції на радіатори.</p>
+        </div>
+      </div>
+
+      <div class="card"><div class="ch"><h3>Потребує уваги</h3><span class="badge b-crit"><span class="dot"></span>4</span></div>
+        <div class="cb" style="padding:0">
+          ${DASH.attention.map(a => `<button class="autorow" data-go="${a.go}" style="width:100%; text-align:left; border:0; border-bottom:1px solid var(--line); background:transparent; cursor:pointer; grid-template-columns:8px 1fr auto">
+            <span class="badge b-${a.tone}" style="padding:0; width:8px; height:8px; border-radius:50%; border:0"></span>
+            <span><span class="an">${esc(a.t)}</span><span class="ad">${esc(a.s)}</span></span>
+            <span style="color:var(--ink-3)">→</span>
+          </button>`).join("")}
+        </div>
+      </div>
+
+      ${S.role === "manager"
+        ? `<div class="card"><div class="ch"><h3>Маржа й собівартість</h3></div><div class="cb">${stateBlock("noperm", "dashboard")}</div></div>`
+        : `<div class="card"><div class="ch"><h3>Економіка обробки</h3></div><div class="cb"><dl style="margin:0 -13px">
+            <div class="frow"><dt>Замовлень за місяць</dt><dd class="num">612</dd></div>
+            <div class="frow"><dt>Пройшли без менеджера</dt><dd class="num">435 (71 %)</dd></div>
+            <div class="frow"><dt>Час до рахунку</dt><dd class="num">4 хв 20 с</dd></div>
+            <div class="frow"><dt>Було вручну</dt><dd class="num">38 хв</dd></div>
+            <div class="frow"><dt>Винятків на 100 замовлень</dt><dd class="num">9</dd></div>
+          </dl><p style="color:var(--ink-3); font-size:11.5px; margin:9px 0 0">Цифри прототипу планові. Фактичні рахуються з першого тижня роботи й показуються тут же.</p></div></div>`}
+    </div>
+  </div>`;
+}
+
+/* ------------------------------------------------------- рендер */
+const SCREENS = { queue: scrQueue, order: scrOrder, exceptions: scrExceptions, pipeline: scrPipeline,
+  drafts: scrDrafts, clients: scrClients, automation: scrAutomation, dashboard: scrDashboard };
+const TITLES = { queue: "Черга замовлень", order: "Замовлення № 7419", exceptions: "Винятки", pipeline: "Воронка виконання",
+  drafts: "Чернетки для 1С/УНФ", clients: "Клієнти", automation: "Автоматизації", dashboard: "Панель" };
+
+function render() {
+  $("#main").innerHTML = `<div class="screen">${SCREENS[S.screen]()}</div>`;
+  document.querySelectorAll(".navitem[data-go]").forEach(b => {
+    const on = b.dataset.go === S.screen || (S.screen === "order" && b.dataset.go === "queue");
+    if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
+  $("#rolename").textContent = S.role === "manager" ? "Менеджер" : "Керівник";
+  const k = $("#kill");
+  k.setAttribute("aria-pressed", String(S.killed));
+  k.classList.toggle("off", S.killed);
+  k.textContent = S.killed ? "▶ Увімкнути автоматику" : "■ Зупинити автоматику";
+  document.title = TITLES[S.screen] + " · Гідросвіт";
+}
+const go = s => { S.screen = s; render(); $("#main").scrollTop = 0; };
+
+/* ------------------------------------------------- поповери, модалки */
+const closePop = () => { $("#popholder").innerHTML = ""; };
+function openPop(anchor, why) {
+  const r = anchor.getBoundingClientRect();
+  $("#popholder").innerHTML = `<div class="pop" role="dialog" aria-label="Пояснення AI" style="left:${Math.min(r.left, innerWidth - 356)}px; top:${Math.min(r.bottom + 6, innerHeight - 240)}px">
+    <button class="close" data-closepop="1" aria-label="Закрити">✕</button>
+    <h4><span class="ai" style="cursor:default">AI</span> Звідки це значення</h4>
+    <p style="margin:0; color:var(--ink-2)">${esc(why)}</p>
+    <dl>
+      <dt>Модель</dt><dd>Claude Haiku 4.5, відповідь за схемою</dd>
+      <dt>Роль моделі</dt><dd>сприйняття — прочитати й розпізнати. Рішення (виставити рахунок, відвантажити, дати знижку) ухвалює правило або людина</dd>
+      <dt>Якщо помилково</dt><dd>виправте значення — правка збережеться як правило й наступного разу спрацює без моделі</dd>
+      <dt>Дані</dt><dd>демонстраційні, вигадані</dd>
+    </dl>
+  </div>`;
+}
+function modal(title, bodyHtml, footHtml) {
+  $("#modalholder").innerHTML = `<div class="backdrop" data-backdrop="1"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <header><h3>${esc(title)}</h3></header><div class="mb">${bodyHtml}</div><footer>${footHtml}</footer></div></div>`;
+}
+const closeModal = () => { $("#modalholder").innerHTML = ""; };
+
+function confirmGate() {
+  modal("Підтвердження замовлення № 7419", `
+    <div class="note info" style="margin-bottom:12px">Після підтвердження система виставить рахунок і надішле його клієнту. Ви можете змінити будь-яке значення до підтвердження.</div>
+    <dl style="margin:0 -13px">
+      <div class="frow"><dt>Клієнт</dt><dd>ФОП Литвиненко Р. О., ІПН 3187409255</dd></div>
+      <div class="frow"><dt>Позицій</dt><dd>3 · сума <span class="num">23 146,00 ₴</span> з ПДВ</dd></div>
+      <div class="frow"><dt>Що станеться</dt><dd>сформується рахунок № СФ-3391 і піде на r.lytvynenko@gmail.com</dd></div>
+      <div class="frow"><dt>Резервування</dt><dd>3 позиції зарезервуються на основному складі</dd></div>
+      <div class="frow"><dt>1С/УНФ</dt><dd><b>передачі не буде</b> — підключення не налаштоване, чернетка залишиться чернеткою</dd></div>
+      <div class="frow"><dt>Захист від дубля</dt><dd><span class="num" style="font-size:11px">web-2026-08-31-0142</span> — замовлення з таким ключем ще не проводилось</dd></div>
+    </dl>`,
+    `<button class="btn primary" data-do-confirm="1">Підтвердити</button>
+     <button class="btn" data-closemodal="1">Змінити дані</button>
+     <span style="flex:1"></span>
+     <span style="color:var(--ink-3); font-size:12px">Якщо не відповісти — замовлення залишиться в черзі</span>`);
+}
+function doConfirm() {
+  closeModal();
+  const b = $("#confirmbtn"); if (!b) return;
+  b.classList.add("busy"); b.textContent = "Формуємо рахунок…"; b.disabled = true;
+  setTimeout(() => {
+    S.confirmed = true; render();
+    toast("Рахунок <b>№ СФ-3391</b> на 23 146,00 ₴ сформовано й надіслано на r.lytvynenko@gmail.com.",
+      () => { S.confirmed = false; render(); });
+  }, 900);
+}
+
+/* ---------------------------------------------------------- демо */
+const DEMO = [
+  { s: "queue", pre: () => { S.seg = "new"; S.sel = "7419"; },
+    t: "1 · Новий заказ. О 09:26 із сайту прийшло замовлення № 7419. Черга відсортована за строком реакції, у рядку одразу видно джерело, клієнта, суму й стан перевірок." },
+  { s: "order", pre: () => { S.tab = "goods"; },
+    t: "2 · Перевірка даних. Єдина картка: клієнт, товари, кількість, сума, джерело. Ліворуч — 8 перевірок; сьома пройшла, восьму — адресу з вільного тексту — розпізнала модель, і це помічено." },
+  { s: "drafts",
+    t: "3 · Чернетка для 1С/УНФ. Система зібрала payload «Замовлення покупця» і таблицю відповідності реквізитів. Кнопки «Передати» немає навмисно: підключення до бази немає, і інтерфейс про це говорить прямо." },
+  { s: "order", pre: () => { S.tab = "docs"; },
+    t: "4 · Документи. Рахунок і видаткова накладна згенеровані з тих самих даних. Рахунок пішов клієнту; накладна залишається чернеткою до передачі в 1С/УНФ." },
+  { s: "order", pre: () => { S.tab = "feed"; },
+    t: "5 · Оплата й доставка. Рейка етапів угорі: оплата надійшла об 11:04, збірку закрив комірник, ТТН у дорозі. У стрічці видно, хто що зробив — людина чи система." },
+  { s: "exceptions",
+    t: "6 · Виняток передано менеджеру. Шість випадків, де автоматика зупиняється: борг понад ліміт, немає товару, дубль, знижка понад норму, нерозпізнана адреса, немає ЄДРПОУ. У кожного є власник, строк і варіанти рішення — але не саме рішення." }
+];
+let demoIx = -1, demoTimer = null, demoTick = null;
+const DEMO_MS = 15000;
+
+function demoStep(n) {
+  demoIx = n;
+  if (n >= DEMO.length) {
+    clearInterval(demoTick); clearTimeout(demoTimer);
+    $("#demoholder").innerHTML = `<div class="demobar"><span>Демонстрацію завершено. 90 секунд, шість кроків, тестові дані.</span>
+      <button data-demo="restart">Спочатку</button><button data-demo="stop">Закрити</button></div>`;
+    return;
+  }
+  const d = DEMO[n];
+  if (d.pre) d.pre();
+  S.screen = d.s; render(); closeModal(); $("#main").scrollTop = 0;
+
+  $("#demoholder").innerHTML = `<div class="demobar">
+    <span class="step-n">${n + 1}/${DEMO.length}</span><span>${esc(d.t)}</span>
+    <button data-demo="prev" ${n === 0 ? "disabled" : ""}>←</button>
+    <button data-demo="next">→</button>
+    <button data-demo="stop">Вийти</button>
+    <span class="bar" style="width:0"></span>
+  </div>`;
+
+  clearTimeout(demoTimer); clearInterval(demoTick);
+  const started = Date.now();
+  demoTick = setInterval(() => {
+    const bar = document.querySelector(".demobar .bar");
+    if (bar) bar.style.width = Math.min(100, (Date.now() - started) / DEMO_MS * 100) + "%";
+  }, 120);
+  demoTimer = setTimeout(() => demoStep(n + 1), DEMO_MS);
+}
+function demoStop() { clearTimeout(demoTimer); clearInterval(demoTick); demoIx = -1; $("#demoholder").innerHTML = ""; }
+
+/* ---------------------------------------------------- обробники */
+document.addEventListener("click", e => {
+  const t = e.target, hit = sel => t.closest(sel);
+
+  if (hit("[data-closepop]")) return closePop();
+  if (t.closest(".ai")) { const a = t.closest(".ai"); openPop(a, a.dataset.ai); return; }
+  if (!t.closest(".pop")) closePop();
+
+  if (hit("[data-backdrop]") && t.classList.contains("backdrop")) return closeModal();
+  if (hit("[data-closemodal]")) return closeModal();
+  if (hit("[data-do-confirm]")) return doConfirm();
+
+  const oo = hit("[data-open-order]");
+  if (oo) {
+    if (oo.dataset.openOrder !== "7419") { toast(`У прототипі детально заповнене одне замовлення — <b>№ 7419</b>. Відкриваю його.`); }
+    S.tab = "goods"; return go("order");
+  }
+  const nav = hit("[data-go]"); if (nav) return go(nav.dataset.go);
+
+  const seg = hit("[data-seg]"); if (seg) { S.seg = seg.dataset.seg; const f = ORDERS.find(o => o.seg === S.seg); S.sel = f ? f.id : null; return render(); }
+  const pick = hit("[data-pick]"); if (pick) { S.sel = pick.dataset.pick; return render(); }
+  const tab = hit("[data-tab]"); if (tab) { S.tab = tab.dataset.tab; return render(); }
+  const cli = hit("[data-cli]"); if (cli) { S.cliSel = cli.dataset.cli; return render(); }
+  const exc = hit("[data-exc]"); if (exc) { S.excSel = +exc.dataset.exc; return render(); }
+
+  if (hit("[data-next-order]")) { toast("Наступне в черзі — <b>№ 7424</b>, ТОВ «Аквалайн», 15 680,00 ₴."); return; }
+  if (hit("[data-handoff]")) { toast("Замовлення передано <b>Андрію Мельнику</b>. Воно з'явиться в його черзі."); return; }
+  if (hit("[data-payload]")) {
+    modal("Payload для 1С/УНФ — замовлення № 7419", `
+      <div class="note demo" style="margin-bottom:12px">Це те, що піде в УНФ, коли з'явиться підключення. Зараз запит нікуди не надсилається.</div>
+      <pre class="code">${esc(PAYLOAD)}</pre>`,
+      `<button class="btn" data-closemodal="1">Закрити</button><button class="btn quiet" data-go="drafts">Відкрити розділ чернеток</button>`);
+    return;
+  }
+  if (hit("[data-cancel-order]")) {
+    modal("Скасувати замовлення № 7419", `<p style="margin:0 0 11px">Резерв на складі буде знято, рахунок анульовано, клієнту піде повідомлення. Замовлення залишиться в історії зі статусом «Скасовано».</p>
+      <label class="u" for="rr">Причина — потрапить у повідомлення клієнту</label>
+      <textarea id="rr" style="width:100%; min-height:74px; margin-top:6px; padding:8px; border:1px solid var(--line-strong); border-radius:var(--r); background:var(--surface)">Клієнт попросив скасувати замовлення.</textarea>`,
+      `<button class="btn danger" data-closemodal="1">Скасувати замовлення</button><button class="btn" data-closemodal="1">Назад</button>`);
+    return;
+  }
+
+  if (hit("[data-exc-resolve]")) { const e2 = EXCEPTIONS[S.excSel]; toast(`Виняток по <b>№ ${esc(e2.id)}</b> знято, замовлення повернуто в потік.`, () => toast("Повернення скасовано.")); return; }
+  if (hit("[data-exc-escalate]")) { toast("Передано <b>Андрію Мельнику</b> (керівник). Строк реакції — 2 години."); return; }
+  if (hit("[data-exc-snooze]")) { toast("Відкладено до завтра, 09:00. Замовлення залишиться у винятках із новим строком.", () => toast("Відкладання скасовано.")); return; }
+  if (hit("[data-exc-cancel]")) { toast("Потрібне підтвердження: скасування замовлення незворотне.", null); return; }
+
+  const lvl = hit("[data-lvl]"); if (lvl) {
+    const [k, n] = lvl.dataset.lvl.split(":"); const a = AUTOS.find(x => x.key === k);
+    a.lvl = +n; render();
+    toast(`«${esc(a.name)}» — рівень <b>${["", "радить", "з підтвердженням", "робить сама"][+n]}</b>. Зміна записана в історію налаштувань.`);
+    return;
+  }
+  const tg = hit("[data-toggle]"); if (tg) { const a = AUTOS.find(x => x.key === tg.dataset.toggle); a.on = !a.on; render(); toast(`«${esc(a.name)}» ${a.on ? "увімкнено" : "вимкнено"}.`); return; }
+  const rs = hit("[data-runsearch]"); if (rs) { S.runQuery = rs.dataset.runsearch; return render(); }
+  const rr = hit("[data-retry-run]"); if (rr) {
+    modal("Повторити запуск № 4602", `<div class="note ${rr.dataset.retryRun === "orig" ? "info" : "warn"}" style="margin-bottom:12px">
+        ${rr.dataset.retryRun === "orig"
+          ? "Повтор <b>з вихідними даними</b>: замовлення береться в тому вигляді, в якому було о 07:02. ЄДРПОУ там усе ще немає — запуск упаде так само."
+          : "Повтор <b>з поточними даними</b>: якщо ЄДРПОУ вже заповнено в картці клієнта, чернетка збереться."}</div>
+      <div class="note"><b>Дубля не буде.</b> Перед складанням перевіряється ключ <span class="num">prom-2026-08-31-0088</span>. Якщо чернетка вже є — запуск завершиться зі станом «уже виконано».</div>`,
+      `<button class="btn primary" data-closemodal="1">Повторити</button><button class="btn" data-closemodal="1">Скасувати</button>`);
+    return;
+  }
+  if (hit("[data-run]")) { toast("Розбір запуску показано нижче в картці."); return; }
+
+  const stt = hit("[data-retry]"); if (stt) { S.states[stt.dataset.retry] = "ok"; return render(); }
+  if (hit("[data-ask]")) { toast("Запит на доступ надіслано <b>Андрію Мельнику</b> (керівник відділу)."); return; }
+
+  const dm = hit("[data-demo]"); if (dm) {
+    const a = dm.dataset.demo;
+    if (a === "stop") return demoStop();
+    if (a === "restart") return demoStep(0);
+    if (a === "next") { clearTimeout(demoTimer); clearInterval(demoTick); return demoStep(demoIx + 1); }
+    clearTimeout(demoTimer); clearInterval(demoTick); return demoStep(Math.max(0, demoIx - 1));
+  }
+  if (hit("#demobtn")) return demoStep(0);
+
+  if (hit("#themebtn")) {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const next = cur === "dark" ? "light" : cur === "light" ? null : "dark";
+    if (next) document.documentElement.setAttribute("data-theme", next);
+    else document.documentElement.removeAttribute("data-theme");
+    toast(`Тема: <b>${next === "dark" ? "темна" : next === "light" ? "світла" : "як у системі"}</b>.`);
+    return;
+  }
+  if (hit("#kill")) {
+    S.killed = !S.killed;
+    if (S.killed) toast("<b>Автоматику зупинено.</b> Приймання замовлень працює, формування рахунків і листи — ні.", () => { S.killed = false; render(); });
+    else toast("Автоматику увімкнено. Черга обробиться протягом кількох хвилин.");
+    return render();
+  }
+  if (hit("#rolepick")) {
+    S.role = S.role === "manager" ? "chief" : "manager";
+    S.screen = S.role === "manager" ? "queue" : "dashboard";
+    render();
+    toast(S.role === "manager" ? "Роль: <b>менеджер клієнтського сервісу</b>. Стартовий екран — черга замовлень." : "Роль: <b>керівник відділу</b>. Стартовий екран — панель.");
+    return;
+  }
+  if (t.id === "confirmbtn" && !S.confirmed) return confirmGate();
+});
+
+document.addEventListener("input", e => {
+  if (e.target.id === "runq") {
+    S.runQuery = e.target.value; const p = e.target.selectionStart; render();
+    const n = $("#runq"); if (n) { n.focus(); n.setSelectionRange(p, p); }
+  }
+});
+document.addEventListener("change", e => {
+  const s = e.target.closest("[data-state]");
+  if (s) { S.states[s.dataset.state] = s.value; render(); }
+});
+
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); $("#gsearch").focus(); return; }
+  if (e.key === "Escape") {
+    const overlay = $("#popholder").innerHTML || $("#modalholder").innerHTML;
+    closePop(); closeModal();
+    if (!overlay && S.screen === "order") go("queue");
+    return;
+  }
+  const aiEl = e.target.closest && e.target.closest(".ai");
+  if (aiEl && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); e.stopPropagation(); openPop(aiEl, aiEl.dataset.ai); return; }
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && S.screen === "order") { e.preventDefault(); return confirmGate(); }
+  if (typing) return;
+
+  if (S.screen === "queue") {
+    const list = ORDERS.filter(o => o.seg === S.seg);
+    const i = list.findIndex(o => o.id === S.sel);
+    if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); S.sel = list[Math.min(i + 1, list.length - 1)].id; return render(); }
+    if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); S.sel = list[Math.max(i - 1, 0)].id; return render(); }
+    if (e.key === "Enter") { e.preventDefault(); S.tab = "goods"; return go("order"); }
+  }
+  const keys = { "1": "queue", "2": "exceptions", "3": "pipeline", "4": "drafts", "5": "clients", "6": "automation", "7": "dashboard" };
+  if (keys[e.key]) go(keys[e.key]);
+});
+
+render();
+</script>
+<!--ARTIFACT:END-->
+</body>
+</html>
