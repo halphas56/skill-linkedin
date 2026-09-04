@@ -1,0 +1,1594 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--ARTIFACT:BEGIN-->
+<title>Закупівлі ДОЛАДУ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600&display=swap">
+<style>
+/* ==========================================================================
+   Закупівлі — прототип закупівельного процесу громадської організації
+   під грантові проєкти. ДЕМОНСТРАЦІЙНИЙ РЕЖИМ, дані тестові.
+   Акцент — індиго; зелений/вохра/червоний тримають статуси; фіолетовий —
+   тільки мітка AI; демо-стрічка інвертована, щоб її не сплутати зі статусом.
+   ========================================================================== */
+:root{
+  --paper:#F1F3F8;
+  --surface:#FFFFFF;
+  --surface-2:#FAFAFD;
+  --sunken:#E7EAF3;
+  --line:#D8DCEA;
+  --line-strong:#B5BAD1;
+  --ink:#171A2B;
+  --ink-2:#4B5170;
+  --ink-3:#79809B;
+  --accent:#3A3F8F;
+  --accent-soft:#E5E8F7;
+  --accent-ink:#2A2E73;
+  --ok:#2C7A46;   --ok-soft:#E3F1E8;
+  --warn:#8A6A10; --warn-soft:#F9F1D9;
+  --crit:#AE3038; --crit-soft:#FAE6E8;
+  --ai:#7C4DA8;   --ai-soft:#F0E9F8;
+  --focus:#3A3F8F;
+  --r:6px;
+  --shadow:0 1px 2px rgba(23,26,43,.07), 0 10px 30px rgba(23,26,43,.10);
+  --sans:"Golos Text","Segoe UI",Roboto,Arial,sans-serif;
+  --mono:"Roboto Mono","SF Mono",Consolas,monospace;
+  --serif:Georgia,"Times New Roman",serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1119; --surface:#161A26; --surface-2:#1B2030; --sunken:#12151F;
+    --line:#282E40; --line-strong:#3B4258;
+    --ink:#E5E8F2; --ink-2:#A6ADC4; --ink-3:#7B839C;
+    --accent:#8B92E8; --accent-soft:#1E2247; --accent-ink:#AFB5F2;
+    --ok:#5CBE78;   --ok-soft:#152D1D;
+    --warn:#D6AC46; --warn-soft:#302711;
+    --crit:#E4838A; --crit-soft:#361F22;
+    --ai:#B292DF;   --ai-soft:#241B36;
+    --focus:#8B92E8;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 30px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1119; --surface:#161A26; --surface-2:#1B2030; --sunken:#12151F;
+  --line:#282E40; --line-strong:#3B4258;
+  --ink:#E5E8F2; --ink-2:#A6ADC4; --ink-3:#7B839C;
+  --accent:#8B92E8; --accent-soft:#1E2247; --accent-ink:#AFB5F2;
+  --ok:#5CBE78;   --ok-soft:#152D1D;
+  --warn:#D6AC46; --warn-soft:#302711;
+  --crit:#E4838A; --crit-soft:#361F22;
+  --ai:#B292DF;   --ai-soft:#241B36;
+  --focus:#8B92E8;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 10px 30px rgba(0,0,0,.4);
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0; background:var(--paper); color:var(--ink); font:400 13.5px/1.5 var(--sans); -webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--focus); outline-offset:2px; border-radius:3px}
+[hidden]{display:none !important}
+.num{font-family:var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.03em}
+.u{text-transform:uppercase; letter-spacing:.08em; font-size:10.5px; font-weight:600; color:var(--ink-3)}
+
+/* ---------------------------------------------------------------- каркас */
+.app{display:grid; grid-template-columns:232px 1fr; grid-template-rows:auto 1fr; height:100vh; min-height:0}
+.topbar{grid-column:1/-1; display:flex; align-items:center; gap:13px; padding:0 14px; height:52px;
+  background:var(--surface); border-bottom:1px solid var(--line); position:relative; z-index:20}
+.brand{display:flex; align-items:baseline; gap:8px; width:218px; flex:none}
+.brand b{font-size:15.5px; font-weight:700; letter-spacing:-.02em}
+.brand span{font-size:10.5px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.1em}
+.demoflag{display:inline-flex; align-items:center; gap:7px; padding:3.5px 11px; border-radius:20px;
+  background:var(--ink); color:var(--paper); font-size:11.5px; font-weight:600; white-space:nowrap}
+.demoflag::before{content:""; width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.8}
+.searchwrap{flex:1; max-width:380px; position:relative}
+.searchwrap input{width:100%; padding:6px 10px 6px 29px; background:var(--sunken); border:1px solid transparent;
+  border-radius:var(--r); color:var(--ink)}
+.searchwrap input::placeholder{color:var(--ink-3)}
+.searchwrap input:focus{background:var(--surface); border-color:var(--line-strong); outline:none}
+.searchwrap .mag{position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--ink-3)}
+.searchwrap .kbd{position:absolute; right:7px; top:50%; transform:translateY(-50%)}
+.kbd{font:500 10px/1.6 var(--mono); padding:1px 5px; border:1px solid var(--line-strong); border-bottom-width:2px;
+  border-radius:3px; color:var(--ink-3); background:var(--surface); white-space:nowrap}
+.spacer{flex:1}
+.pick{display:flex; align-items:center; gap:6px; padding:5px 9px; background:transparent; border:1px solid var(--line);
+  border-radius:var(--r); cursor:pointer}
+.pick:hover{border-color:var(--line-strong)}
+.pick small{color:var(--ink-3); font-size:11px}
+.killswitch{display:flex; align-items:center; gap:7px; padding:5px 10px; cursor:pointer; border:1px solid var(--crit);
+  color:var(--crit); background:transparent; border-radius:var(--r); font-weight:600}
+.killswitch:hover{background:var(--crit-soft)}
+.killswitch.off{border-color:var(--line-strong); color:var(--ink-2)}
+
+.rail{background:var(--surface); border-right:1px solid var(--line); display:flex; flex-direction:column;
+  padding:10px 8px; gap:2px; overflow-y:auto; min-height:0}
+.rail .u{padding:12px 8px 5px}
+.navitem{display:flex; align-items:center; gap:9px; width:100%; padding:6px 9px; border:0; background:transparent;
+  border-radius:var(--r); cursor:pointer; text-align:left; color:var(--ink-2)}
+.navitem:hover{background:var(--sunken); color:var(--ink)}
+.navitem[aria-current="page"]{background:var(--accent-soft); color:var(--accent-ink); font-weight:600}
+.navitem .ico{width:16px; text-align:center; flex:none; font-size:13px; opacity:.85}
+.navitem .cnt{margin-left:auto; font:500 11px/1 var(--mono); color:var(--ink-3)}
+.navitem .cnt.hot{color:var(--crit); font-weight:600}
+.navitem[aria-current="page"] .cnt{color:var(--accent-ink)}
+
+.main{overflow:auto; min-height:0; display:flex; flex-direction:column}
+.screen{display:flex; flex-direction:column; flex:1; min-height:0}
+.shead{display:flex; align-items:flex-end; gap:14px; padding:14px 18px 11px; border-bottom:1px solid var(--line);
+  background:var(--surface); flex:none; flex-wrap:wrap}
+.shead h1{margin:0; font-size:18px; font-weight:600; letter-spacing:-.02em}
+.shead .sub{color:var(--ink-3); font-size:12px; margin-top:2px}
+.statepick{display:flex; align-items:center; gap:6px; margin-left:auto}
+.statepick select{padding:4px 7px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r)}
+.body{flex:1; min-height:0; overflow:auto; padding:16px 18px 30px}
+.body.flush{padding:0; display:flex; min-height:0}
+
+/* ----------------------------------------------------------------- атоми */
+.btn{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:var(--r);
+  border:1px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer;
+  font-weight:500; white-space:nowrap}
+.btn:hover{background:var(--sunken)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
+.btn.primary:hover{background:var(--accent-ink); border-color:var(--accent-ink)}
+.btn.quiet{border-color:transparent; background:transparent; color:var(--accent-ink)}
+.btn.quiet:hover{background:var(--accent-soft)}
+.btn.danger{border-color:var(--crit); color:var(--crit)}
+.btn.danger:hover{background:var(--crit-soft)}
+.btn.sm{padding:3px 8px; font-size:12px}
+.btn[disabled]{opacity:.5; cursor:not-allowed}
+.btn.busy{pointer-events:none; opacity:.75}
+
+.badge{display:inline-flex; align-items:center; gap:5px; padding:1.5px 8px; border-radius:20px; font-size:11.5px;
+  font-weight:500; border:1px solid transparent; white-space:nowrap}
+.badge .dot{width:6px; height:6px; border-radius:50%; background:currentColor; flex:none}
+.b-ok{background:var(--ok-soft); color:var(--ok); border-color:color-mix(in srgb,var(--ok) 26%,transparent)}
+.b-warn{background:var(--warn-soft); color:var(--warn); border-color:color-mix(in srgb,var(--warn) 30%,transparent)}
+.b-crit{background:var(--crit-soft); color:var(--crit); border-color:color-mix(in srgb,var(--crit) 26%,transparent)}
+.b-info{background:var(--accent-soft); color:var(--accent-ink); border-color:color-mix(in srgb,var(--accent) 24%,transparent)}
+.b-mute{background:var(--sunken); color:var(--ink-2); border-color:var(--line)}
+
+.ai{display:inline-flex; align-items:center; gap:4px; padding:0 5px; height:16px; border-radius:3px;
+  background:var(--ai-soft); color:var(--ai); border:1px solid color-mix(in srgb,var(--ai) 32%,transparent);
+  font:600 9.5px/1 var(--sans); letter-spacing:.07em; cursor:pointer; vertical-align:middle; user-select:none}
+.ai:hover{filter:brightness(.96)}
+.ai::before{content:"◆"; font-size:7px}
+
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r)}
+.card>.ch{padding:10px 13px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.card>.ch h3{margin:0; font-size:13px; font-weight:600}
+.card>.cb{padding:13px}
+.grid{display:grid; gap:12px}
+.note{padding:9px 12px; border-radius:var(--r); border:1px solid var(--line); background:var(--surface-2);
+  color:var(--ink-2); font-size:12.5px}
+.note.warn{background:var(--warn-soft); border-color:color-mix(in srgb,var(--warn) 32%,transparent); color:var(--ink)}
+.note.crit{background:var(--crit-soft); border-color:color-mix(in srgb,var(--crit) 30%,transparent); color:var(--ink)}
+.note.info{background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 26%,transparent); color:var(--ink)}
+.note.dark{background:var(--ink); border-color:var(--ink); color:var(--paper)}
+.note b{font-weight:600}
+
+dl{margin:0}
+.frow{display:grid; grid-template-columns:132px 1fr; gap:9px; padding:5px 13px; align-items:baseline}
+.frow+.frow{border-top:1px solid var(--line)}
+.frow>dt{color:var(--ink-2); font-size:12px}
+.frow>dd{margin:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0}
+.narrow .frow{grid-template-columns:110px 1fr}
+.trunc{max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block}
+
+/* ------------------------------------------------------- бюджетна смуга */
+.bar{height:6px; background:var(--sunken); border-radius:3px; overflow:hidden; margin-top:5px}
+.bar i{display:block; height:100%; background:var(--accent); border-radius:3px}
+.bar i.hot{background:var(--crit)}
+.bar i.mid{background:var(--warn)}
+.barrow{display:grid; grid-template-columns:1fr auto; gap:5px 10px; padding:8px 13px; font-size:12.5px}
+.barrow+.barrow{border-top:1px solid var(--line)}
+.barrow .bl{font-weight:500}
+.barrow .bv{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:12px; color:var(--ink-2); white-space:nowrap}
+.barrow .bar{grid-column:1/-1}
+.barrow .bs{grid-column:1/-1; font-size:11px; color:var(--ink-3); font-family:var(--mono)}
+
+/* ---------------------------------------------------------- таблиці */
+.tblwrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--r); background:var(--surface)}
+table.tbl{border-collapse:separate; border-spacing:0; width:100%; font-size:12.5px}
+table.tbl th{position:sticky; top:0; z-index:2; background:var(--surface-2); text-align:left; padding:7px 10px;
+  border-bottom:1px solid var(--line-strong); font-weight:600; font-size:10.5px; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--ink-3); white-space:nowrap}
+table.tbl th.r,table.tbl td.r{text-align:right}
+table.tbl td{padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:middle}
+table.tbl tbody tr:hover td{background:var(--surface-2)}
+table.tbl tbody tr[aria-selected="true"] td{background:var(--accent-soft)}
+table.tbl tbody tr:last-child td{border-bottom:0}
+table.tbl .idc{font-family:var(--mono); font-weight:500; white-space:nowrap; font-size:12px}
+.raw{color:var(--ink-3); font-size:11px; display:block; margin-top:2px}
+
+/* ------------------------------------------------ порівняльна таблиця */
+.cmpwrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--r); background:var(--surface)}
+table.cmp{border-collapse:separate; border-spacing:0; width:100%; font-size:12.5px; min-width:640px}
+table.cmp th,table.cmp td{padding:8px 11px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left}
+table.cmp thead th{background:var(--surface-2); font-size:11.5px; border-bottom:1px solid var(--line-strong)}
+table.cmp tbody th{font-weight:500; color:var(--ink-2); font-size:12px; width:180px; background:var(--surface-2)}
+table.cmp .win{background:var(--accent-soft)}
+table.cmp thead .win{background:var(--accent); color:#fff; border-bottom-color:var(--accent)}
+table.cmp thead .win .sup{color:rgba(255,255,255,.82)}
+table.cmp .rej{color:var(--ink-3)}
+table.cmp .sup{display:block; font-size:11px; color:var(--ink-3); font-weight:400; margin-top:2px}
+table.cmp tr:last-child td,table.cmp tr:last-child th{border-bottom:0}
+.pricecell{font-family:var(--mono); font-variant-numeric:tabular-nums; font-weight:600; font-size:13px}
+
+/* ------------------------------------------------------ маршрут погодження */
+.route{list-style:none; padding:0; margin:0}
+.rstep{display:grid; grid-template-columns:26px 1fr; gap:11px; padding:0 0 15px; position:relative}
+.rstep::before{content:""; position:absolute; left:12px; top:28px; bottom:0; width:2px; background:var(--line)}
+.rstep:last-child{padding-bottom:0}
+.rstep:last-child::before{display:none}
+.rstep .mk{width:26px; height:26px; border-radius:50%; border:2px solid var(--line); display:grid; place-items:center;
+  background:var(--surface); font-size:11px; z-index:1; color:var(--ink-3); font-weight:700}
+.rstep.done .mk{border-color:var(--ok); background:var(--ok); color:#fff}
+.rstep.done::before{background:var(--ok)}
+.rstep.wait .mk{border-color:var(--accent); background:var(--accent-soft); color:var(--accent-ink)}
+.rstep.skip .mk{border-style:dashed}
+.rstep .who{display:block; font-weight:600; font-size:12.5px}
+.rstep .role{display:block; color:var(--ink-2); font-size:12px}
+.rstep .when{color:var(--ink-3); font-size:11px; font-family:var(--mono); margin-top:3px; display:block}
+.rstep.wait .when{color:var(--crit); font-weight:600}
+
+/* --------------------------------------------------- комплект документів */
+.docs{display:flex; flex-direction:column}
+.docrow{display:grid; grid-template-columns:22px 1fr auto; gap:10px; padding:9px 13px; align-items:start; font-size:12.5px}
+.docrow+.docrow{border-top:1px solid var(--line)}
+.docrow .st{font-size:13px; line-height:1.35; text-align:center}
+.docrow.have .st{color:var(--ok)}
+.docrow.draft .st{color:var(--warn)}
+.docrow.none .st{color:var(--ink-3)}
+.docrow .t{font-weight:500}
+.docrow .d{color:var(--ink-3); font-size:11.5px; display:block; margin-top:2px}
+.docrow.none .t{color:var(--ink-2)}
+
+/* --------------------------------------------------------- майстер-деталь */
+.split{display:grid; grid-template-columns:minmax(330px,406px) 1fr; flex:1; min-height:0}
+.split>.left{border-right:1px solid var(--line); overflow-y:auto; background:var(--surface); min-height:0}
+.split>.right{overflow-y:auto; min-height:0; background:var(--paper)}
+.seg{display:flex; gap:2px; padding:9px 11px; border-bottom:1px solid var(--line); flex-wrap:wrap;
+  position:sticky; top:0; background:var(--surface); z-index:3}
+.segbtn{padding:4px 9px; border:0; background:transparent; border-radius:var(--r); cursor:pointer; font-size:12px;
+  color:var(--ink-2); display:flex; gap:6px; align-items:center}
+.segbtn:hover{background:var(--sunken)}
+.segbtn[aria-pressed="true"]{background:var(--sunken); color:var(--ink); font-weight:600}
+.segbtn i{font-style:normal; font-family:var(--mono); font-size:11px; color:var(--ink-3)}
+.segbtn.alarm i{color:var(--crit); font-weight:600}
+
+.qrow{display:flex; flex-direction:column; align-items:stretch; width:100%; text-align:left; border:0;
+  border-bottom:1px solid var(--line); background:transparent; padding:10px 12px; cursor:pointer;
+  border-left:3px solid transparent}
+.qrow:hover{background:var(--surface-2)}
+.qrow[aria-selected="true"]{background:var(--accent-soft); border-left-color:var(--accent)}
+.qrow .l1{display:flex; align-items:baseline; gap:8px}
+.qrow .l1 .onum{font-family:var(--mono); font-weight:600; font-size:12.5px}
+.qrow .l1 .sum{margin-left:auto; font-family:var(--mono); font-variant-numeric:tabular-nums; font-weight:600}
+.qrow .l2{color:var(--ink); font-size:12.5px; margin-top:3px}
+.qrow .l2s{color:var(--ink-2); font-size:11.5px; margin-top:2px; display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+.qrow .l3{margin-top:6px; display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+.qrow .age{color:var(--ink-3); font-size:11px; font-family:var(--mono)}
+.qrow .age.late{color:var(--crit); font-weight:600}
+.tag{font-size:10.5px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-3);
+  border:1px solid var(--line); border-radius:3px; padding:0 4px}
+
+/* --------------------------------------------------------------- вкладки */
+.tabs{display:flex; gap:2px; border-bottom:1px solid var(--line); padding:0 3px; flex-wrap:wrap}
+.tab{padding:7px 12px; border:0; background:transparent; cursor:pointer; color:var(--ink-2);
+  border-bottom:2px solid transparent; font-size:12.5px; margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--accent-ink); border-bottom-color:var(--accent); font-weight:600}
+
+/* ------------------------------------------------------------- перевірки */
+.checks{display:flex; flex-direction:column}
+.check{display:grid; grid-template-columns:18px 1fr; gap:8px; padding:7px 13px; align-items:start; font-size:12.5px}
+.check+.check{border-top:1px solid var(--line)}
+.check .mk{font-size:12px; line-height:1.5; text-align:center}
+.check.ok .mk{color:var(--ok)}
+.check.warn .mk{color:var(--warn)}
+.check.bad .mk{color:var(--crit)}
+.check .d{color:var(--ink-3); font-size:11.5px; display:block; margin-top:1px}
+
+/* ------------------------------------------------------------- панель */
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:11px}
+.kpi{display:flex; flex-direction:column; align-items:flex-start; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--r); padding:12px 13px; cursor:pointer; text-align:left; width:100%}
+.kpi:hover{border-color:var(--line-strong)}
+.kpi .k{color:var(--ink-3); font-size:11.5px}
+.kpi .v{font:600 25px/1.15 var(--mono); font-variant-numeric:tabular-nums; margin:5px 0 4px; letter-spacing:-.03em}
+.spark{display:flex; align-items:flex-end; gap:3px; height:54px; margin-top:9px}
+.spark i{flex:1; background:var(--accent); opacity:.32; border-radius:1px 1px 0 0; min-height:2px}
+.spark i.hi{opacity:.92}
+
+/* ------------------------------------------------- автоматизації, історія */
+.autorow{display:grid; grid-template-columns:1fr auto auto auto; gap:11px; align-items:center; padding:10px 12px;
+  border-bottom:1px solid var(--line)}
+.autorow:last-child{border-bottom:0}
+.autorow .an{display:block; font-weight:600; font-size:12.5px}
+.autorow .ad{display:block; color:var(--ink-2); font-size:12px; margin-top:2px}
+.lvl{display:flex; border:1px solid var(--line-strong); border-radius:var(--r); overflow:hidden}
+.lvl button{border:0; background:var(--surface); padding:3px 8px; cursor:pointer; font-size:11.5px; color:var(--ink-2);
+  border-right:1px solid var(--line)}
+.lvl button:last-child{border-right:0}
+.lvl button[aria-pressed="true"]{background:var(--accent); color:#fff; font-weight:600}
+.sw{width:34px; height:19px; border-radius:20px; border:1px solid var(--line-strong); background:var(--sunken);
+  position:relative; cursor:pointer; padding:0}
+.sw::after{content:""; position:absolute; top:2px; left:2px; width:13px; height:13px; border-radius:50%;
+  background:var(--ink-3); transition:.15s}
+.sw[aria-checked="true"]{background:var(--ok-soft); border-color:var(--ok)}
+.sw[aria-checked="true"]::after{left:17px; background:var(--ok)}
+.steps{display:flex; flex-direction:column; font-size:12px}
+.step{display:grid; grid-template-columns:22px 1fr auto; gap:9px; padding:7px 0; border-bottom:1px dashed var(--line);
+  align-items:baseline}
+.step:last-child{border-bottom:0}
+.step .n{font-family:var(--mono); color:var(--ink-3); font-size:11px}
+.step .io{color:var(--ink-3); font-family:var(--mono); font-size:11px; margin-top:3px; word-break:break-all; display:block}
+.step.fail{color:var(--crit)}
+
+/* ---------------------------------------------------------- стрічка подій */
+.feed{display:flex; flex-direction:column}
+.fitem{display:grid; grid-template-columns:20px 1fr auto; gap:9px; padding:9px 13px; align-items:start}
+.fitem+.fitem{border-top:1px solid var(--line)}
+.fitem .av{width:20px; height:20px; border-radius:50%; display:grid; place-items:center; font-size:10px;
+  font-weight:700; background:var(--sunken); color:var(--ink-2)}
+.fitem.sys .av{background:var(--ai-soft); color:var(--ai)}
+.fitem .who{font-size:12.5px; font-weight:600}
+.fitem .what{font-size:12.5px; color:var(--ink-2); margin-top:1px}
+.fitem .basis{font-size:11px; color:var(--ink-3); margin-top:3px}
+.fitem time{font-size:11px; color:var(--ink-3); font-family:var(--mono); white-space:nowrap}
+
+/* ------------------------------------------------------------- документ */
+.doc{background:#fff; color:#1b1b1b; font-family:var(--serif); font-size:11.5px; line-height:1.5; padding:20px 24px;
+  box-shadow:var(--shadow); border:1px solid var(--line); max-width:640px}
+.doc h4{margin:0 0 4px; font-size:14px; text-align:center; font-weight:600}
+.doc .meta{text-align:center; font-size:10.5px; color:#555; margin-bottom:12px}
+.doc p{margin:7px 0}
+.doc table{width:100%; border-collapse:collapse; margin:9px 0; font-size:10.5px}
+.doc th,.doc td{border:1px solid #999; padding:3px 5px; text-align:left}
+.doc th{background:#eee; font-weight:600; font-size:9.5px}
+.doc td.r,.doc th.r{text-align:right; font-family:var(--mono)}
+.doc .sig{display:flex; justify-content:space-between; margin-top:18px; font-size:10px; color:#555}
+.doc .stamp{margin-top:14px; border:2px dashed #8a5a12; color:#8a5a12; padding:6px 10px; text-align:center;
+  font-family:var(--sans); font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase}
+
+/* --------------------------------------------------------------- стани */
+.state{padding:36px 18px; display:flex; flex-direction:column; align-items:center; gap:9px; text-align:center; color:var(--ink-2)}
+.state h3{margin:0; font-size:15px; color:var(--ink); font-weight:600}
+.state p{margin:0; max-width:46ch; font-size:12.5px}
+.sk{background:linear-gradient(90deg,var(--sunken) 25%,var(--line) 50%,var(--sunken) 75%); background-size:200% 100%;
+  animation:sh 1.3s infinite; border-radius:3px}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sklist{display:flex; flex-direction:column; gap:9px; padding:14px 0}
+.sklist .sk{height:38px}
+
+/* ------------------------------------------------------ тост, модалка, демо */
+.toasts{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:60; max-width:410px}
+.toast{background:var(--ink); color:var(--paper); padding:10px 13px; border-radius:var(--r); box-shadow:var(--shadow);
+  display:flex; gap:11px; align-items:center; font-size:12.5px; animation:tin .18s ease-out}
+@keyframes tin{from{transform:translateY(8px); opacity:0}to{transform:none; opacity:1}}
+.toast button{background:transparent; border:0; color:var(--paper); text-decoration:underline; cursor:pointer;
+  font-weight:600; white-space:nowrap}
+.pop{position:fixed; z-index:70; max-width:340px; background:var(--surface); border:1px solid var(--line-strong);
+  border-radius:var(--r); box-shadow:var(--shadow); padding:12px 13px; font-size:12.5px}
+.pop h4{margin:0 0 6px; font-size:12.5px; display:flex; align-items:center; gap:6px}
+.pop dl{display:grid; grid-template-columns:auto 1fr; gap:3px 9px; margin:7px 0 0}
+.pop dt{color:var(--ink-3); font-size:11.5px}
+.pop dd{margin:0; font-size:11.5px}
+.pop .close{position:absolute; top:6px; right:8px; border:0; background:transparent; cursor:pointer; color:var(--ink-3); font-size:14px}
+.backdrop{position:fixed; inset:0; background:rgba(23,26,43,.48); z-index:65; display:flex; align-items:center;
+  justify-content:center; padding:18px}
+.modal{background:var(--surface); border:1px solid var(--line-strong); border-radius:var(--r); box-shadow:var(--shadow);
+  max-width:580px; width:100%; max-height:88vh; overflow:auto}
+.modal header{padding:13px 15px; border-bottom:1px solid var(--line)}
+.modal header h3{margin:0; font-size:14px}
+.modal .mb{padding:15px}
+.modal footer{padding:11px 15px; border-top:1px solid var(--line); display:flex; gap:9px; align-items:center; flex-wrap:wrap}
+.demobar{position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:58; background:var(--ink);
+  color:var(--paper); padding:9px 15px; border-radius:22px; box-shadow:var(--shadow); display:flex; gap:11px;
+  align-items:center; font-size:12.5px; max-width:min(93vw,720px); overflow:hidden}
+.demobar button{background:transparent; border:1px solid rgba(255,255,255,.4); color:var(--paper); border-radius:14px;
+  padding:2px 10px; cursor:pointer; font-size:11.5px}
+.demobar .step-n{font-family:var(--mono); opacity:.7; font-size:11px; white-space:nowrap}
+.demobar .bar2{position:absolute; left:0; bottom:0; height:2px; background:var(--accent); transition:width .2s linear}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important}}
+@media (max-width:1200px){ .cardgrid{grid-template-columns:1fr 1fr !important} .cardgrid>.c3{grid-column:1/-1} }
+@media (max-width:900px){
+  .app{grid-template-columns:56px 1fr}
+  .rail .lbl,.rail .u{display:none}
+  .navitem{justify-content:center; padding:8px 4px}
+  .navitem .cnt{display:none}
+  .split{grid-template-columns:1fr}
+  .split>.left{max-height:44vh; border-right:0; border-bottom:1px solid var(--line)}
+  .cardgrid{grid-template-columns:1fr !important}
+}
+</style>
+<!--ARTIFACT:SPLIT-->
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><b>Закупівлі</b><span>ГО ДОЛАДУ</span></div>
+    <span class="demoflag" title="Прототип на тестових даних">ДЕМО · тестові дані</span>
+    <div class="searchwrap">
+      <span class="mag" aria-hidden="true">⌕</span>
+      <input id="gsearch" type="search" placeholder="№ закупівлі, проєкт, постачальник, ЄДРПОУ…" aria-label="Пошук">
+      <span class="kbd" aria-hidden="true">Ctrl K</span>
+    </div>
+    <div class="spacer"></div>
+    <button class="pick" id="rolepick" aria-haspopup="listbox"><small>Роль</small> <b id="rolename">Менеджерка із закупівель</b> <span aria-hidden="true">▾</span></button>
+    <button class="killswitch" id="kill" aria-pressed="false">■ Зупинити автоматику</button>
+  </header>
+
+  <nav class="rail" aria-label="Розділи">
+    <div class="u">Робота дня</div>
+    <button class="navitem" data-go="requests"><span class="ico" aria-hidden="true">▤</span><span class="lbl">Заявки на закупівлю</span><span class="cnt hot" id="nav-req">7</span></button>
+    <button class="navitem" data-go="approvals"><span class="ico" aria-hidden="true">✓</span><span class="lbl">Погодження й рішення</span><span class="cnt hot" id="nav-appr">7</span></button>
+    <div class="u">Закупівлі</div>
+    <button class="navitem" data-go="plan"><span class="ico" aria-hidden="true">▥</span><span class="lbl">План закупівель</span><span class="cnt">31</span></button>
+    <button class="navitem" data-go="registry"><span class="ico" aria-hidden="true">☰</span><span class="lbl">Реєстр по проєктах</span><span class="cnt">4</span></button>
+    <button class="navitem" data-go="suppliers"><span class="ico" aria-hidden="true">◍</span><span class="lbl">Постачальники</span><span class="cnt hot" id="nav-sup">2</span></button>
+    <div class="u">Контроль</div>
+    <button class="navitem" data-go="automation"><span class="ico" aria-hidden="true">⚙</span><span class="lbl">Автоматизації</span><span class="cnt hot" id="nav-auto">1</span></button>
+    <button class="navitem" data-go="dashboard"><span class="ico" aria-hidden="true">▦</span><span class="lbl">Панель</span></button>
+    <div style="flex:1"></div>
+    <button class="navitem" id="demobtn"><span class="ico" aria-hidden="true">▶</span><span class="lbl">Демо 90 секунд</span></button>
+    <button class="navitem" id="themebtn"><span class="ico" aria-hidden="true">◐</span><span class="lbl">Тема</span></button>
+  </nav>
+
+  <main class="main" id="main"></main>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="popholder"></div>
+<div id="modalholder"></div>
+<div id="demoholder"></div>
+<script>
+/* =============================================================
+   Закупівлі — кликабельний прототип закупівельного процесу
+   громадської організації під грантові проєкти.
+   ДЕМОНСТРАЦІЙНИЙ РЕЖИМ: усі дані вигадані. Нічого назовні не йде.
+   ============================================================= */
+"use strict";
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = n => Number(n).toLocaleString("uk-UA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\s  ]/g, " ");
+const int = n => Number(n).toLocaleString("uk-UA").replace(/[\s  ]/g, " ");
+const pct = (a, b) => Math.round(a / b * 100);
+
+/* ---------------------------------------------------------- проєкти */
+const PROJECTS = [
+  { id: "p1", name: "Повернення до праці", donor: "IRC", code: "IRC-2026-114", budget: 3120000, used: 1284300, till: "31.12.2026" },
+  { id: "p2", name: "Ветеранський простір Київ", donor: "UNDP", code: "UNDP-2026-042", budget: 2480000, used: 1902400, till: "30.11.2026" },
+  { id: "p3", name: "Психологічна підтримка родин", donor: "GIZ", code: "GIZ-2026-207", budget: 1350000, used: 611800, till: "31.03.2027" },
+  { id: "p4", name: "Адміністративна діяльність", donor: "Власні кошти", code: "CORE-2026", budget: 640000, used: 388900, till: "31.12.2026" }
+];
+const projById = id => PROJECTS.find(p => p.id === id) || PROJECTS[0];
+
+const LINES = {
+  p1: [
+    { n: "Обладнання", limit: 620000, used: 178400 },
+    { n: "Послуги тренерів", limit: 980000, used: 512000 },
+    { n: "Оренда приміщень", limit: 420000, used: 289000 },
+    { n: "Друк і роздатковий матеріал", limit: 180000, used: 96400 },
+    { n: "Адміністрування", limit: 920000, used: 208500 }
+  ],
+  p2: [
+    { n: "Обладнання", limit: 340000, used: 319600 },
+    { n: "Оренда простору", limit: 960000, used: 742000 },
+    { n: "Заходи й події", limit: 680000, used: 512800 },
+    { n: "Адміністрування", limit: 500000, used: 328000 }
+  ],
+  p3: [
+    { n: "Послуги психологів", limit: 720000, used: 341200 },
+    { n: "Супервізія", limit: 260000, used: 118400 },
+    { n: "Оренда залів", limit: 190000, used: 84200 },
+    { n: "Адміністрування", limit: 180000, used: 68000 }
+  ],
+  p4: [
+    { n: "Ліцензії та підписки", limit: 180000, used: 96700 },
+    { n: "Офісні витрати", limit: 240000, used: 178200 },
+    { n: "Зв'язок і банк", limit: 220000, used: 114000 }
+  ]
+};
+
+/* ---------------------------------------------- поріг → маршрут (матриця) */
+const MATRIX = [
+  { band: "до 20 000 ₴", offers: "1 пропозиція", who: "Менеджерка із закупівель", extra: "—" },
+  { band: "20 000 — 100 000 ₴", offers: "3 пропозиції + порівняльна таблиця", who: "+ Фінансова менеджерка", extra: "—" },
+  { band: "100 000 — 500 000 ₴", offers: "3 пропозиції + протокол вибору", who: "+ Виконавча директорка", extra: "Підтвердження конфлікту інтересів" },
+  { band: "понад 500 000 ₴", offers: "Тендер, оголошення 10 днів", who: "+ Погодження донора", extra: "Протокол комітету" }
+];
+
+/* ---------------------------------------------------------- заявки */
+const REQUESTS = [
+  { id: "ЗК-2026-0147", seg: "work", subj: "Ноутбуки для навчального центру, 12 шт", team: "Навчання", pid: "p1",
+    line: "Обладнання", sum: 384000, need: "20.09.2026", age: "2 дні в маршруті", late: true, lvl: "info",
+    note: "Постачальника обрано · чекає підпису директорки", ai: true },
+  { id: "ЗК-2026-0151", seg: "new", subj: "Оренда залу для групових сесій, вересень", team: "Психологи", pid: "p3",
+    line: "Оренда залів", sum: 46000, need: "02.09.2026", age: "3 год", late: false, lvl: "ok",
+    note: "Перевірки пройдено · потрібні 3 пропозиції", ai: false },
+  { id: "ЗК-2026-0152", seg: "new", subj: "Друк методичних матеріалів, 500 прим.", team: "Навчання", pid: "p1",
+    line: "Друк і роздатковий матеріал", sum: 28400, need: "15.09.2026", age: "5 год", late: false, lvl: "ok",
+    note: "Перевірки пройдено · пропозиції зібрано (3 з 3)", ai: false },
+  { id: "ЗК-2026-0153", seg: "exc", subj: "Послуги супервізії, 40 год", team: "Психологи", pid: "p3",
+    line: "Супервізія", sum: 92000, need: "10.09.2026", age: "1 день", late: false, lvl: "warn",
+    note: "Одна пропозиція замість трьох — унікальний постачальник", ai: false },
+  { id: "ЗК-2026-0154", seg: "exc", subj: "Кавомашина для ветеранського простору", team: "Простір", pid: "p2",
+    line: "Обладнання", sum: 34900, need: "25.09.2026", age: "6 год", late: false, lvl: "crit",
+    note: "Лінію «Обладнання» використано на 94 % — залишку не вистачає", ai: false },
+  { id: "ЗК-2026-0156", seg: "exc", subj: "Ліцензії Google Workspace на рік", team: "Адміністрація", pid: "p4",
+    line: "Ліцензії та підписки", sum: 62400, need: "12.09.2026", age: "1 день", late: false, lvl: "crit",
+    note: "Строк ліцензії виходить за межі проєкту — витрата може бути неприйнятною для донора", ai: true },
+  { id: "ЗК-2026-0155", seg: "new", subj: "Транспорт на виїзний захід у Броварах", team: "Простір", pid: "p2",
+    line: "Заходи й події", sum: 18600, need: "08.09.2026", age: "2 год", late: false, lvl: "ok",
+    note: "Нижче порогу 20 000 ₴ — достатньо однієї пропозиції", ai: false }
+];
+
+/* ------------------------------------------------ закупівля для картки */
+const P = {
+  id: "ЗК-2026-0147", subj: "Ноутбуки для навчального центру, 12 шт",
+  team: "Команда «Навчання»", author: "Олег Приходько", created: "01.09.2026, 14:20",
+  pid: "p1", line: "Обладнання", sum: 384000, need: "20.09.2026",
+  band: "100 000 — 500 000 ₴",
+  checks: [
+    { s: "ok", t: "Проєкт активний", d: "«Повернення до праці» (IRC-2026-114), діє до 31.12.2026" },
+    { s: "ok", t: "Бюджетна лінія має залишок", d: "«Обладнання»: ліміт 620 000 ₴ · використано 178 400 ₴ · вільно 441 600 ₴" },
+    { s: "ok", t: "Сума вкладається в лінію", d: "після закупівлі залишиться 57 600 ₴ (9,3 % лінії)" },
+    { s: "ok", t: "Календар платежів витримує", d: "вересень: заплановано 212 000 ₴, ліміт місяця 700 000 ₴ · після оплати 596 000 ₴" },
+    { s: "ok", t: "Строк постачання вкладається у потребу", d: "14 днів від договору → до 20.09; потреба — 20.09" },
+    { s: "ok", t: "Поріг визначено", d: "100 000 — 500 000 ₴: 3 пропозиції, протокол вибору, підпис директорки" },
+    { s: "warn", t: "Ціну зафіксовано лише на 10 днів", d: "постачальник фіксує ціну до 11.09 — після цього потрібне повторне підтвердження", ai: "Умову витягнуто з тексту комерційної пропозиції ТОВ «Технополіс Груп»" },
+    { s: "warn", t: "Один постачальник має ознаку конфлікту інтересів", d: "ФОП Марченко Д. В. — збіг прізвища зі співробітницею; потрібне підтвердження людини", ai: "Збіг знайдено звіркою прізвищ засновників з реєстром персоналу" }
+  ],
+  offers: [
+    { sup: "ТОВ «Технополіс Груп»", edrpou: "39214785", price: 384000, term: "14 днів", warranty: "24 місяці",
+      pay: "після поставки", exp: "7 закупівель, без зауважень", vet: "ok", spec: "повна",
+      win: true, why: "Не найнижча ціна. Обґрунтування: строк 14 днів проти 30 і оплата після поставки. Обладнання потрібне до 20.09 для звіту донору за 3-й квартал. Різниця з найдешевшою пропозицією — 18 000 ₴, це 4,9 % до неї." },
+    { sup: "ТОВ «ІТ-Партнер»", edrpou: "41028956", price: 371400, term: "30 днів", warranty: "12 місяців",
+      pay: "100 % передоплата", exp: "3 закупівлі", vet: "ok", spec: "повна",
+      rej: "Строк 30 днів не вкладається у потребу до 20.09. Повна передоплата не передбачена політикою організації для нових постачальників." },
+    { sup: "ФОП Марченко Д. В.", edrpou: "3094187255", price: 366000, term: "21 день", warranty: "12 місяців",
+      pay: "50 % передоплата", exp: "2 закупівлі", vet: "conflict", spec: "часткова: 8 ГБ ОЗП замість 16 ГБ",
+      rej: "Відхилено з двох причин: невідповідність ТЗ (8 ГБ ОЗП замість 16 ГБ) і непідтверджений конфлікт інтересів." }
+  ],
+  route: [
+    { s: "done", who: "Ірина Гнатенко", role: "Менеджерка із закупівель", act: "Ініціювала закупівлю, зібрала 3 пропозиції", when: "01.09, 14:20" },
+    { s: "done", who: "Олег Приходько", role: "Керівник проєкту «Повернення до праці»", act: "Підтвердив потребу і відповідність ТЗ", when: "01.09, 16:05" },
+    { s: "done", who: "Наталя Ковтун", role: "Фінансова менеджерка", act: "Підтвердила бюджет і календар платежів", when: "02.09, 10:12" },
+    { s: "wait", who: "Марія Демченко", role: "Виконавча директорка", act: "Остаточне погодження — поріг понад 100 000 ₴", when: "чекає 2 дні" },
+    { s: "skip", who: "Донор IRC", role: "Погодження донора", act: "Не потрібне: поріг донора — 500 000 ₴", when: "—" }
+  ],
+  docs: [
+    { s: "have", t: "Технічне завдання", d: "ТЗ-0147.pdf · Олег Приходько, 28.08.2026" },
+    { s: "have", t: "Комерційні пропозиції (3 з 3)", d: "Технополіс, ІТ-Партнер, ФОП Марченко · 01.09.2026" },
+    { s: "have", t: "Порівняльна таблиця", d: "Сформувала система з пропозицій, 01.09.2026", auto: true },
+    { s: "have", t: "Протокол вибору постачальника", d: "Чернетку підготувала система, підписала Ірина Гнатенко 02.09.2026", auto: true },
+    { s: "have", t: "Підтвердження відсутності конфлікту інтересів", d: "Ірина Гнатенко, 02.09.2026 — щодо обраного постачальника" },
+    { s: "draft", t: "Договір", d: "Чернетка на юридичній перевірці з 02.09.2026 · строк перевірки — 3 робочі дні" },
+    { s: "none", t: "Рахунок", d: "З'явиться після підписання договору" },
+    { s: "none", t: "Акт / видаткова накладна", d: "З'явиться після поставки, до 20.09.2026" }
+  ],
+  feed: [
+    { sys: true, who: "Збір заявок", what: "прийняла заявку від команди «Навчання» з форми потреб", basis: "форма «Потреба на закупівлю», вересень 2026", t: "01.09 14:20" },
+    { sys: true, who: "Перевірка бюджету", what: "звірила суму з лінією «Обладнання» і календарем платежів — усе вкладається", basis: "вільно 441 600 ₴ · ліміт вересня 700 000 ₴", t: "01.09 14:20" },
+    { sys: true, who: "Маршрут погодження", what: "визначила поріг 100 000 — 500 000 ₴ і побудувала маршрут із 4 кроків", basis: "матриця повноважень, редакція від 12.01.2026", t: "01.09 14:21" },
+    { sys: false, who: "Ірина Гнатенко", what: "провела переговори і зібрала три комерційні пропозиції", basis: null, t: "01.09 16:40" },
+    { sys: true, who: "Порівняльна таблиця", what: "звела пропозиції за 7 критеріями та підсвітила невідповідність ТЗ у ФОП Марченко", basis: "8 ГБ ОЗП замість 16 ГБ за ТЗ", t: "01.09 16:52", ai: true },
+    { sys: true, who: "Перевірка постачальників", what: "звірила реєстраційні дані й санкційні переліки; у ФОП Марченко — ознака конфлікту інтересів", basis: "збіг прізвища засновника з реєстром персоналу", t: "01.09 16:53", ai: true },
+    { sys: false, who: "Ірина Гнатенко", what: "обрала ТОВ «Технополіс Груп» і письмово обґрунтувала вибір не за найнижчою ціною", basis: null, t: "02.09 09:40" },
+    { sys: true, who: "Протокол вибору", what: "підготувала чернетку протоколу з порівняльної таблиці й обґрунтування", basis: "підписала людина — Ірина Гнатенко", t: "02.09 09:41" },
+    { sys: true, who: "Контроль документів", what: "нагадала юристці про договір: 3-й робочий день перевірки", basis: "комплект 5 з 8", t: "04.09 09:00" }
+  ]
+};
+
+/* ------------------------------------------------ погодження й рішення */
+const APPROVALS = [
+  { id: "ЗК-2026-0147", seg: "sign", subj: "Ноутбуки для навчального центру, 12 шт", pid: "p1", sum: 384000,
+    who: "Марія Демченко · виконавча директорка", age: "чекає 2 дні", late: true,
+    why: "Поріг понад 100 000 ₴ — потрібен остаточний підпис директорки. Усі попередні кроки маршруту пройдені." },
+  { id: "ЗК-2026-0151", seg: "sign", subj: "Оренда залу для групових сесій, вересень", pid: "p3", sum: 46000,
+    who: "Наталя Ковтун · фінансова менеджерка", age: "чекає 4 год", late: false,
+    why: "Поріг 20 000 — 100 000 ₴: потрібне погодження фінансової менеджерки після порівняльної таблиці." },
+  { id: "ЗК-2026-0143", seg: "sign", subj: "Канцтовари на 4-й квартал", pid: "p4", sum: 24800,
+    who: "Наталя Ковтун · фінансова менеджерка", age: "чекає 1 день", late: false,
+    why: "Стандартна закупівля, три пропозиції зібрано." },
+  { id: "ЗК-2026-0153", seg: "dec", subj: "Послуги супервізії, 40 год", pid: "p3", sum: 92000,
+    who: "Ірина Гнатенко", age: "1 день", late: false,
+    why: "Одна пропозиція замість трьох. Постачальник — сертифікована супервізорка за методикою, якої вимагає донор; альтернатив на ринку система не знайшла.",
+    fix: "Потрібне письмове обґрунтування єдиного постачальника — без нього закупівля не пройде аудит IRC." },
+  { id: "ЗК-2026-0154", seg: "dec", subj: "Кавомашина для ветеранського простору", pid: "p2", sum: 34900,
+    who: "Наталя Ковтун", age: "6 год", late: false,
+    why: "Лінію «Обладнання» проєкту UNDP використано на 94 %: вільно 20 400 ₴ при потребі 34 900 ₴.",
+    fix: "Варіанти: перерозподілити бюджет між лініями (потрібна згода донора), перенести на інший проєкт або відкласти." },
+  { id: "ЗК-2026-0156", seg: "dec", subj: "Ліцензії Google Workspace на рік", pid: "p4", sum: 62400,
+    who: "Наталя Ковтун", age: "1 день", late: false,
+    why: "Ліцензія діє до 31.08.2027, проєкт закінчується 31.12.2026. Витрати за межами періоду проєкту донор зазвичай не визнає прийнятними.",
+    fix: "Варіанти: розділити на 4 місяці в межах проєкту, оплатити з core funding або отримати письмову згоду донора." },
+  { id: "ЗК-2026-0139", seg: "dec", subj: "Ремонт вхідної групи простору", pid: "p2", sum: 128500,
+    who: "Марія Демченко", age: "прострочено на 3 дні", late: true,
+    why: "ФОП Марченко Д. В. — ознака конфлікту інтересів: збіг прізвища засновника зі співробітницею організації.",
+    fix: "Потрібне підтвердження або спростування конфлікту й підпис декларації. До цього закупівля заблокована." }
+];
+
+/* ------------------------------------------------------- постачальники */
+const SUPPLIERS = [
+  { name: "ТОВ «Технополіс Груп»", code: "39214785", reg: "ok", sanc: "ok", conf: "ok", deals: 7, sum: 1284000, note: "Без зауважень до виконання" },
+  { name: "ТОВ «Друкарня Соняшник»", code: "38571209", reg: "ok", sanc: "ok", conf: "ok", deals: 11, sum: 486300, note: "Двічі порушила строк на 1–2 дні" },
+  { name: "ТОВ «ІТ-Партнер»", code: "41028956", reg: "ok", sanc: "ok", conf: "ok", deals: 3, sum: 214700, note: "Працює лише за передоплатою" },
+  { name: "ФОП Левченко А. І.", code: "2871049566", reg: "ok", sanc: "ok", conf: "ok", deals: 5, sum: 298000, note: "Унікальний постачальник: сертифікація за методикою донора" },
+  { name: "ФОП Марченко Д. В.", code: "3094187255", reg: "ok", sanc: "ok", conf: "bad", deals: 2, sum: 96400, note: "Заблоковано: конфлікт інтересів не підтверджено й не спростовано" },
+  { name: "ТОВ «Оренда Простір»", code: "40119872", reg: "ok", sanc: "wait", conf: "ok", deals: 1, sum: 42000, note: "Санкційна перевірка не завершена: реєстр недоступний з 03.09" }
+];
+const VET = { ok: ["b-ok", "пройдено"], wait: ["b-warn", "не завершено"], bad: ["b-crit", "потребує рішення"] };
+
+/* ------------------------------------------------------------ реєстр */
+const REGISTRY = {
+  p1: [
+    { id: "ЗК-2026-0147", subj: "Ноутбуки для навчального центру, 12 шт", sum: 384000, sup: "ТОВ «Технополіс Груп»", st: "route", docs: 5, need: "20.09.2026" },
+    { id: "ЗК-2026-0152", subj: "Друк методичних матеріалів, 500 прим.", sum: 28400, sup: "ТОВ «Друкарня Соняшник»", st: "offers", docs: 2, need: "15.09.2026" },
+    { id: "ЗК-2026-0131", subj: "Послуги тренера, модуль «Резюме»", sum: 96000, sup: "ФОП Левченко А. І.", st: "done", docs: 8, need: "закрито 22.08" },
+    { id: "ЗК-2026-0118", subj: "Оренда навчального класу, серпень", sum: 74000, sup: "ТОВ «Оренда Простір»", st: "act", docs: 7, need: "акт очікується" },
+    { id: "ЗК-2026-0104", subj: "Проєктор і екран", sum: 41800, sup: "ТОВ «Технополіс Груп»", st: "done", docs: 8, need: "закрито 04.08" }
+  ],
+  p2: [
+    { id: "ЗК-2026-0154", subj: "Кавомашина для ветеранського простору", sum: 34900, sup: "—", st: "dec", docs: 1, need: "25.09.2026" },
+    { id: "ЗК-2026-0139", subj: "Ремонт вхідної групи простору", sum: 128500, sup: "ФОП Марченко Д. В.", st: "dec", docs: 3, need: "прострочено" },
+    { id: "ЗК-2026-0155", subj: "Транспорт на виїзний захід", sum: 18600, sup: "—", st: "offers", docs: 1, need: "08.09.2026" }
+  ],
+  p3: [
+    { id: "ЗК-2026-0153", subj: "Послуги супервізії, 40 год", sum: 92000, sup: "ФОП Левченко А. І.", st: "dec", docs: 2, need: "10.09.2026" },
+    { id: "ЗК-2026-0151", subj: "Оренда залу для групових сесій", sum: 46000, sup: "—", st: "offers", docs: 1, need: "02.09.2026" }
+  ],
+  p4: [
+    { id: "ЗК-2026-0156", subj: "Ліцензії Google Workspace на рік", sum: 62400, sup: "—", st: "dec", docs: 1, need: "12.09.2026" },
+    { id: "ЗК-2026-0143", subj: "Канцтовари на 4-й квартал", sum: 24800, sup: "ТОВ «Друкарня Соняшник»", st: "route", docs: 4, need: "20.09.2026" }
+  ]
+};
+const REG_ST = { offers: ["b-mute", "Збір пропозицій"], route: ["b-info", "У маршруті погодження"],
+  dec: ["b-crit", "Потребує рішення"], act: ["b-warn", "Чекає акт"], done: ["b-ok", "Закрито"] };
+
+/* --------------------------------------------------------- автоматизації */
+const AUTOS = [
+  { key: "intake", name: "Збір заявок від команд", desc: "Форма потреб і пошта → заявка з проєктом, лінією, сумою і строком. Дедуп за зовнішнім id.", lvl: 3, on: true, last: "04.09.2026, 09:12", limit: "—" },
+  { key: "plan", name: "Консолідація в план закупівель", desc: "Зводить заявки за проєктами, бюджетними лініями й місяцями. План перебудовується щоразу.", lvl: 3, on: true, last: "04.09.2026, 09:12", limit: "—" },
+  { key: "budget", name: "Перевірка бюджету, строків і календаря платежів", desc: "Ліміт лінії, залишок, календар платежів місяця, строк потреби, період проєкту.", lvl: 3, on: true, last: "04.09.2026, 09:12", limit: "перевірка нічого не змінює — тому рівень 3" },
+  { key: "vet", name: "Перевірка постачальника", desc: "Реєстраційні дані, санкційні переліки, звірка засновників з реєстром персоналу.", lvl: 2, on: true, last: "04.09.2026, 08:40", limit: "конфлікт інтересів підтверджує тільки людина" },
+  { key: "cmp", name: "Порівняльна таблиця пропозицій", desc: "Зводить пропозиції за критеріями ТЗ і підсвічує невідповідності. Вибір робить людина.", lvl: 3, on: true, last: "03.09.2026, 17:22", limit: "не ранжує постачальників і не рекомендує переможця" },
+  { key: "route", name: "Маршрут погодження за матрицею", desc: "Визначає поріг і будує маршрут. Погоджують люди, система лише веде чергу й нагадує.", lvl: 3, on: true, last: "04.09.2026, 09:13", limit: "—" },
+  { key: "docs", name: "Контроль комплекту документів", desc: "Стежить за 8 позиціями комплекту й нагадує відповідальному, коли документа бракує.", lvl: 3, on: true, last: "04.09.2026, 09:00", limit: "не більше 1 нагадування на добу" },
+  { key: "prot", name: "Протокол вибору постачальника", desc: "Готує чернетку протоколу з порівняльної таблиці й обґрунтування. Підписує людина.", lvl: 1, on: true, last: "02.09.2026, 09:41", limit: "тільки чернетка" },
+  { key: "audit", name: "Пакет документів для аудиту", desc: "Збирає всі документи закупівлі в один архів із описом і контрольними сумами.", lvl: 2, on: false, last: "за 24 години запусків не було", silent: true, limit: "—" }
+];
+
+const RUNS = [
+  { t: "04.09 09:13:02", a: "Маршрут погодження за матрицею", mode: "Тригер", st: "ok", ent: "ЗК-2026-0151 · Психологічна підтримка родин", dur: "0,6 с" },
+  { t: "04.09 09:12:41", a: "Перевірка бюджету, строків і календаря платежів", mode: "Тригер", st: "ok", ent: "ЗК-2026-0151 · Психологічна підтримка родин", dur: "1,4 с" },
+  { t: "04.09 09:12:38", a: "Консолідація в план закупівель", mode: "Розклад", st: "ok", ent: "31 заявка · 4 проєкти", dur: "3,2 с" },
+  { t: "04.09 09:00:04", a: "Контроль комплекту документів", mode: "Розклад", st: "waiting", ent: "ЗК-2026-0147 · Повернення до праці", dur: "0,8 с", sel: true },
+  { t: "04.09 08:40:19", a: "Перевірка постачальника", mode: "Тригер", st: "fail", ent: "ТОВ «Оренда Простір» · 40119872", dur: "31,0 с" },
+  { t: "03.09 17:22:50", a: "Порівняльна таблиця пропозицій", mode: "Тригер", st: "ok", ent: "ЗК-2026-0152 · Повернення до праці", dur: "4,1 с" },
+  { t: "02.09 09:41:12", a: "Протокол вибору постачальника", mode: "Вручну", st: "ok", ent: "ЗК-2026-0147 · Повернення до праці", dur: "2,7 с" },
+  { t: "02.09 09:40:55", a: "Перевірка бюджету, строків і календаря платежів", mode: "Повтор", st: "ok", ent: "ЗК-2026-0147 · Повернення до праці", dur: "1,3 с", retry: "повтор запуску № 3318" }
+];
+const RUN_ST = { ok: ["b-ok", "Успішно"], fail: ["b-crit", "Помилка"], waiting: ["b-warn", "Чекає людину"], run: ["b-info", "Виконується"] };
+
+const FAILED_RUN = {
+  id: "3402", a: "Перевірка постачальника", ent: "ТОВ «Оренда Простір» · ЄДРПОУ 40119872", t: "04.09.2026, 08:40:19",
+  steps: [
+    { n: 1, t: "Взяти постачальника з черги перевірки", st: "ok", io: "suppliers.code = 40119872 · причина: нова закупівля ЗК-2026-0118" },
+    { n: 2, t: "Перевірити ключ ідемпотентності", st: "ok", io: "перевірка за цей тиждень ще не виконувалась" },
+    { n: 3, t: "Звірити реєстраційні дані", st: "ok", io: "запис активний, КВЕД 68.20, дата реєстрації 14.03.2019" },
+    { n: 4, t: "Звірити засновників з реєстром персоналу", st: "ok", io: "збігів немає" },
+    { n: 5, t: "Звірити із санкційними переліками", st: "fail", io: "джерело не відповідає: тайм-аут 30 с" }
+  ],
+  human: "Крок 5 «Звірити із санкційними переліками»: джерело перевірки не відповідало 30 секунд. Три автоматичні повтори з інтервалами 2, 4 і 8 секунд теж не пройшли.",
+  fix: "Постачальник НЕ позначений як перевірений — він у стані «перевірка не завершена», і закупівлі з ним не рухаються далі маршруту. Це навмисно: недоступність джерела не може означати «все гаразд». Повторіть запуск, коли джерело відновиться, або проведіть перевірку вручну й прикріпіть скріншот до закупівлі."
+};
+
+/* ------------------------------------------------------------- панель */
+const DASH = {
+  updated: "04.09.2026, 09:20", period: "вересень 2026",
+  kpis: [
+    { k: "Закупівель у роботі", v: "31", d: "на 1 284 000 ₴", tone: "info", go: "plan" },
+    { k: "Потребують рішення", v: "4", d: "2 прострочені", tone: "crit", go: "approvals" },
+    { k: "Неповні комплекти", v: "9", d: "ризик для аудиту", tone: "warn", go: "registry" },
+    { k: "Пройшли без ручної роботи", v: "64 %", d: "перевірки, план, маршрут, протокол", tone: "ok", go: "automation" }
+  ],
+  spark: [4, 7, 5, 9, 12, 2, 1, 8, 11, 14, 9, 7, 3, 6],
+  attention: [
+    { tone: "crit", t: "ЗК-2026-0139: конфлікт інтересів не підтверджено 3 дні", s: "ремонт вхідної групи, 128 500 ₴ · чекає Марію Демченко", go: "approvals" },
+    { tone: "crit", t: "ЗК-2026-0147 чекає підпису директорки 2 дні", s: "ноутбуки, 384 000 ₴ · ціна зафіксована лише до 11.09", go: "card" },
+    { tone: "warn", t: "3 закупівлі без акта понад 30 днів після поставки", s: "на 187 400 ₴ · IRC вимагає акт для визнання витрат", go: "registry" },
+    { tone: "warn", t: "«Ветеранський простір»: лінію «Обладнання» використано на 94 %", s: "до кінця проєкту 3 місяці · вільно 20 400 ₴", go: "plan" },
+    { tone: "warn", t: "ТОВ «Оренда Простір»: санкційна перевірка не завершена", s: "джерело недоступне з 03.09 · закупівлі з постачальником зупинені", go: "suppliers" }
+  ]
+};
+
+/* --------------------------------------------------------------- стан */
+const S = {
+  screen: "requests", sel: "ЗК-2026-0147", seg: "new", role: "manager", killed: false,
+  states: {}, tab: "budget", apprSeg: "dec", apprSel: 3, regPid: "p1", planPid: "p1",
+  runQuery: "", signed: false
+};
+const stateOf = k => S.states[k] || "ok";
+
+/* ------------------------------------------------------------ утиліти */
+function toast(html, undo) {
+  const box = $("#toasts"), el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = `<span>${html}</span>` + (undo ? `<button type="button" data-undo="1">Скасувати</button>` : "");
+  box.appendChild(el);
+  const kill = () => el.remove();
+  if (undo) el.querySelector("[data-undo]").addEventListener("click", () => { undo(); kill(); });
+  setTimeout(kill, 6500);
+}
+const badge = (map, key) => { const [c, t] = map[key] || ["b-mute", key]; return `<span class="badge ${c}"><span class="dot"></span>${esc(t)}</span>`; };
+const aiMark = why => `<span class="ai" role="button" tabindex="0" data-ai="${esc(why)}" title="Звідки це значення">AI</span>`;
+
+function stateBlock(kind, key) {
+  if (kind === "loading") return `<div class="sklist">${'<div class="sk"></div>'.repeat(6)}</div>`;
+  if (kind === "empty") return `<div class="state"><h3>Тут порожньо</h3><p>За обраними умовами записів немає. Заявки розібрано, у роботі 31 закупівля.</p><button class="btn" data-go="plan">Відкрити план закупівель</button></div>`;
+  if (kind === "error") return `<div class="state"><h3>Не вдалося завантажити дані</h3><p>Сервіс не відповідає більше 30 секунд. Фільтри й введене збережено — після повтору повернетесь у той самий зріз.</p><button class="btn primary" data-retry="${esc(key)}">Повторити</button></div>`;
+  if (kind === "noperm") return `<div class="state"><h3>Немає доступу до цього розділу</h3><p>Розділ доступний фінансовій менеджерці й виконавчій директорці. Ваша роль — менеджерка із закупівель.</p><button class="btn" data-ask="1">Запросити доступ</button></div>`;
+  return "";
+}
+function shead(title, sub, key, extra) {
+  const st = stateOf(key);
+  return `<div class="shead">
+    <div><h1>${title}</h1><div class="sub">${sub}</div></div>
+    ${extra || ""}
+    <div class="statepick">
+      <label class="u" for="st-${key}">Стан екрана</label>
+      <select id="st-${key}" data-state="${key}">
+        ${["ok:робочий", "loading:завантаження", "empty:порожньо", "error:помилка", "noperm:немає доступу"]
+          .map(o => { const [v, l] = o.split(":"); return `<option value="${v}"${st === v ? " selected" : ""}>${l}</option>`; }).join("")}
+      </select>
+    </div>
+  </div>`;
+}
+function barRow(l) {
+  const p = pct(l.used, l.limit);
+  const cls = p >= 90 ? "hot" : p >= 75 ? "mid" : "";
+  return `<div class="barrow">
+    <span class="bl">${esc(l.n)}</span>
+    <span class="bv">${int(l.used)} / ${int(l.limit)} ₴</span>
+    <span class="bar"><i class="${cls}" style="width:${Math.min(100, p)}%"></i></span>
+    <span class="bs">використано ${p} % · вільно ${int(l.limit - l.used)} ₴</span>
+  </div>`;
+}
+
+/* ------------------------------------------------------------- екрани */
+function scrRequests() {
+  const st = stateOf("requests");
+  const head = shead("Заявки на закупівлю", "Що подали команди. Сортування — за строком потреби, а не за датою подання.", "requests");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "requests")}</div>`;
+
+  const segs = [
+    { k: "new", t: "Нові", n: REQUESTS.filter(r => r.seg === "new").length },
+    { k: "exc", t: "Потребують рішення", n: REQUESTS.filter(r => r.seg === "exc").length, alarm: true },
+    { k: "work", t: "У роботі", n: REQUESTS.filter(r => r.seg === "work").length }
+  ];
+  const list = REQUESTS.filter(r => r.seg === S.seg);
+  const r = list.find(x => x.id === S.sel) || list[0];
+
+  const rows = list.length ? list.map(x => {
+    const pr = projById(x.pid);
+    return `<button type="button" class="qrow" role="option" data-pick="${esc(x.id)}" aria-selected="${x.id === (r && r.id)}">
+      <span class="l1"><span class="onum">${esc(x.id)}</span><span class="sum num">${money(x.sum)}</span></span>
+      <span class="l2">${esc(x.subj)}</span>
+      <span class="l2s"><span class="tag">${esc(pr.donor)}</span> ${esc(pr.name)} <span style="color:var(--ink-3)">·</span> ${esc(x.line)}</span>
+      <span class="l3">
+        <span class="badge b-${x.lvl}"><span class="dot"></span>${esc(x.note)}</span>
+        ${x.ai ? aiMark("У цій заявці модель читала текст пропозиції або звіряла строки — деталі в картці") : ""}
+        <span class="age${x.late ? " late" : ""}">${esc(x.age)}</span>
+      </span>
+    </button>`;
+  }).join("") : `<div class="state"><h3>У цьому сегменті порожньо</h3><p>Оберіть інший сегмент угорі.</p></div>`;
+
+  const pr = r ? projById(r.pid) : null;
+  const det = r ? `<div style="padding:16px 18px 26px">
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><h3>${esc(r.id)}</h3><span class="badge b-${r.lvl}"><span class="dot"></span>${esc(r.note)}</span></div>
+        <dl>
+          <div class="frow"><dt>Предмет закупівлі</dt><dd>${esc(r.subj)}</dd></div>
+          <div class="frow"><dt>Команда-ініціатор</dt><dd>${esc(r.team)}</dd></div>
+          <div class="frow"><dt>Проєкт</dt><dd><span class="tag">${esc(pr.donor)}</span> ${esc(pr.name)} <span class="num" style="color:var(--ink-3)">${esc(pr.code)}</span></dd></div>
+          <div class="frow"><dt>Бюджетна лінія</dt><dd>${esc(r.line)}</dd></div>
+          <div class="frow"><dt>Сума заявки</dt><dd class="num" style="font-weight:600">${money(r.sum)} ₴</dd></div>
+          <div class="frow"><dt>Потрібно до</dt><dd class="num">${esc(r.need)}</dd></div>
+          <div class="frow"><dt>Поріг закупівлі</dt><dd>${esc(r.sum < 20000 ? MATRIX[0].band : r.sum < 100000 ? MATRIX[1].band : r.sum < 500000 ? MATRIX[2].band : MATRIX[3].band)} — ${esc(r.sum < 20000 ? MATRIX[0].offers : r.sum < 100000 ? MATRIX[1].offers : r.sum < 500000 ? MATRIX[2].offers : MATRIX[3].offers)}</dd></div>
+        </dl>
+      </div>
+      <div class="note ${r.lvl === "crit" ? "crit" : r.lvl === "warn" ? "warn" : "info"}" style="margin-bottom:12px">
+        <b>${r.lvl === "ok" || r.lvl === "info" ? "Що зробила автоматика:" : "Чому зупинилась автоматика:"}</b> ${esc(r.note)}.
+      </div>
+      <div style="display:flex; gap:9px; flex-wrap:wrap">
+        <button class="btn primary" data-open-card="${esc(r.id)}">Відкрити картку закупівлі</button>
+        ${r.seg === "exc" ? `<button class="btn" data-go="approvals">Перейти до рішень</button>` : ``}
+        <button class="btn" data-handoff="1">Передати колезі</button>
+      </div>
+      <p style="color:var(--ink-3); font-size:12px; margin-top:12px">Клавіатура: <span class="kbd">↑</span> <span class="kbd">↓</span> — рух, <span class="kbd">Enter</span> — відкрити картку.</p>
+    </div>` : `<div class="state"><h3>Нічого не вибрано</h3><p>Оберіть заявку зліва.</p></div>`;
+
+  return head + `<div class="body flush"><div class="split">
+    <div class="left">
+      <div class="seg" role="tablist">${segs.map(s => `<button type="button" class="segbtn${s.alarm ? " alarm" : ""}" data-seg="${s.k}" aria-pressed="${S.seg === s.k}">${s.t} <i>${s.n}</i></button>`).join("")}</div>
+      <div role="listbox" aria-label="Заявки">${rows}</div>
+    </div>
+    <div class="right">${det}</div>
+  </div></div>`;
+}
+
+function scrCard() {
+  const pr = projById(P.pid);
+  const line = LINES[P.pid].find(l => l.n === P.line);
+  const head = `<div class="shead">
+    <div><h1>${esc(P.id)} · ${esc(P.subj)}</h1>
+      <div class="sub"><span class="tag">${esc(pr.donor)}</span> ${esc(pr.name)} · лінія «${esc(P.line)}» · ініціювала ${esc(P.team)}, ${esc(P.created)}</div></div>
+    <div class="statepick">
+      <button class="btn sm" data-go="requests">← До заявок</button>
+      <button class="btn sm" data-next-req="1">Наступна →</button>
+    </div>
+  </div>`;
+
+  /* --- вкладка: заявка й бюджет --- */
+  const tBudget = `
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      <div class="card"><div class="ch"><h3>Перевірка бюджету, строків і календаря</h3><span class="badge b-ok"><span class="dot"></span>6 з 8</span></div>
+        <div class="checks">${P.checks.map(c => `
+          <div class="check ${c.s}">
+            <span class="mk" aria-hidden="true">${c.s === "ok" ? "✓" : c.s === "warn" ? "▲" : "✕"}</span>
+            <span><span class="t">${esc(c.t)}</span>${c.ai ? " " + aiMark(c.ai) : ""}<span class="d">${esc(c.d)}</span></span>
+          </div>`).join("")}</div>
+      </div>
+      <div class="card"><div class="ch"><h3>Бюджет проєкту «${esc(pr.name)}»</h3><span class="badge b-mute"><span class="dot"></span>${esc(pr.code)}</span></div>
+        <div>${LINES[P.pid].map(l => l.n === P.line
+          ? `<div class="barrow" style="background:var(--accent-soft)">
+               <span class="bl">${esc(l.n)} <span class="badge b-info" style="margin-left:4px"><span class="dot"></span>лінія цієї закупівлі</span></span>
+               <span class="bv">${int(l.used)} / ${int(l.limit)} ₴</span>
+               <span class="bar"><i style="width:${pct(l.used, l.limit)}%"></i></span>
+               <span class="bs">вільно ${int(l.limit - l.used)} ₴ · після цієї закупівлі залишиться ${int(l.limit - l.used - P.sum)} ₴</span>
+             </div>`
+          : barRow(l)).join("")}</div>
+      </div>
+    </div>`;
+
+  /* --- вкладка: пропозиції --- */
+  const win = P.offers.find(o => o.win);
+  const rDone = P.route.filter(r => r.s === "done").length;
+  const rTotal = P.route.filter(r => r.s !== "skip").length;
+  const cmpRow = (label, get) => `<tr><th>${esc(label)}</th>${P.offers.map(o => `<td class="${o.win ? "win" : "rej"}">${get(o)}</td>`).join("")}</tr>`;
+  const tOffers = `
+    <div class="note info" style="margin-bottom:12px">
+      <b>Таблицю звела система, вибір зробила людина.</b> Система не ранжує постачальників і не пропонує переможця —
+      вона зводить пропозиції за критеріями ТЗ і підсвічує невідповідності. Обґрунтування вибору пише менеджерка,
+      бо саме воно потім читається на аудиті.
+    </div>
+    <div class="cmpwrap"><table class="cmp">
+      <thead><tr><th style="width:180px">Критерій</th>
+        ${P.offers.map(o => `<th class="${o.win ? "win" : ""}">${esc(o.sup)}<span class="sup">ЄДРПОУ ${esc(o.edrpou)}${o.win ? " · обрано" : ""}</span></th>`).join("")}
+      </tr></thead>
+      <tbody>
+        <tr><th>Ціна з ПДВ</th>${P.offers.map(o => `<td class="${o.win ? "win" : "rej"}"><span class="pricecell">${money(o.price)} ₴</span>${o.price === Math.min(...P.offers.map(x => x.price)) ? `<span class="sup">найнижча</span>` : `<span class="sup">+${money(o.price - Math.min(...P.offers.map(x => x.price)))} ₴ до найнижчої</span>`}</td>`).join("")}</tr>
+        ${cmpRow("Строк поставки", o => esc(o.term))}
+        ${cmpRow("Гарантія", o => esc(o.warranty))}
+        ${cmpRow("Умови оплати", o => esc(o.pay))}
+        ${cmpRow("Відповідність ТЗ", o => o.spec === "повна" ? `<span class="badge b-ok"><span class="dot"></span>повна</span>` : `<span class="badge b-crit"><span class="dot"></span>${esc(o.spec)}</span>`)}
+        ${cmpRow("Досвід співпраці", o => esc(o.exp))}
+        ${cmpRow("Перевірка постачальника", o => o.vet === "ok"
+          ? `<span class="badge b-ok"><span class="dot"></span>реєстр, санкції, конфлікт — чисто</span>`
+          : `<span class="badge b-crit"><span class="dot"></span>конфлікт інтересів не підтверджено</span> ` + aiMark("Ознаку знайдено звіркою прізвищ засновників з реєстром персоналу; підтверджує або спростовує людина"))}
+        <tr><th>Рішення</th>${P.offers.map(o => `<td class="${o.win ? "win" : "rej"}">${o.win
+          ? `<span class="badge b-info"><span class="dot"></span>обрано</span>`
+          : `<span class="badge b-mute"><span class="dot"></span>відхилено</span>`}<span class="sup">${esc(o.win ? "" : o.rej)}</span></td>`).join("")}</tr>
+      </tbody>
+    </table></div>
+    <div class="card" style="margin-top:13px">
+      <div class="ch"><h3>Обґрунтування вибору</h3><span class="badge b-mute"><span class="dot"></span>написала Ірина Гнатенко, 02.09</span></div>
+      <div class="cb" style="color:var(--ink-2)">${esc(win.why)}</div>
+    </div>`;
+
+  /* --- вкладка: погодження --- */
+  const tRoute = `
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      <div class="card"><div class="ch"><h3>Маршрут погодження</h3><span class="badge ${rDone >= rTotal ? "b-ok" : "b-info"}"><span class="dot"></span>${rDone} з ${rTotal} кроків</span></div>
+        <div class="cb"><ul class="route">${P.route.map((r, i) => `
+          <li class="rstep ${r.s}">
+            <span class="mk">${r.s === "done" ? "✓" : r.s === "wait" ? i + 1 : "—"}</span>
+            <span>
+              <span class="who">${esc(r.who)}</span>
+              <span class="role">${esc(r.role)}</span>
+              <span class="role" style="color:var(--ink-3)">${esc(r.act)}</span>
+              <span class="when">${esc(r.when)}</span>
+            </span>
+          </li>`).join("")}</ul></div>
+      </div>
+      <div class="card"><div class="ch"><h3>Матриця повноважень</h3><span class="badge b-mute"><span class="dot"></span>редакція 12.01.2026</span></div>
+        <div class="tblwrap" style="border:0"><table class="tbl">
+          <thead><tr><th>Сума</th><th>Пропозиції</th><th>Хто погоджує</th></tr></thead>
+          <tbody>${MATRIX.map(m => `<tr aria-selected="${m.band === P.band}">
+            <td class="idc">${esc(m.band)}</td><td>${esc(m.offers)}</td>
+            <td>${esc(m.who)}${m.extra !== "—" ? `<span class="raw">додатково: ${esc(m.extra)}</span>` : ""}</td>
+          </tr>`).join("")}</tbody>
+        </table></div>
+        <div class="cb" style="border-top:1px solid var(--line); color:var(--ink-3); font-size:12px">
+          Маршрут будується автоматично за сумою і проєктом. Порядок кроків і склад погоджувачів змінюються тільки
+          редагуванням матриці — не вручну в конкретній закупівлі.
+        </div>
+      </div>
+    </div>`;
+
+  /* --- вкладка: документи --- */
+  const have = P.docs.filter(d => d.s === "have").length;
+  const tDocs = `
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
+      <div class="card"><div class="ch"><h3>Комплект документів</h3>
+        <span class="badge ${have >= 8 ? "b-ok" : "b-warn"}"><span class="dot"></span>${have} з ${P.docs.length}</span></div>
+        <div class="docs">${P.docs.map(d => `
+          <div class="docrow ${d.s}">
+            <span class="st" aria-hidden="true">${d.s === "have" ? "✓" : d.s === "draft" ? "▲" : "○"}</span>
+            <span><span class="t">${esc(d.t)}</span>${d.auto ? ` <span class="badge b-mute" style="font-size:10px"><span class="dot"></span>готує система</span>` : ""}<span class="d">${esc(d.d)}</span></span>
+            <span>${d.s === "have" ? `<button class="btn sm">Відкрити</button>` : d.s === "draft" ? `<button class="btn sm">Нагадати юристці</button>` : `<span class="badge b-mute"><span class="dot"></span>ще рано</span>`}</span>
+          </div>`).join("")}</div>
+        <div class="cb" style="border-top:1px solid var(--line)">
+          <div class="note warn" style="margin-bottom:0"><b>Що блокує закриття.</b> Без договору, рахунку й акта закупівля не закривається,
+          а витрата не визнається донором. Система нагадує відповідальному щодня, поки документа бракує.</div>
+        </div>
+      </div>
+      <div>
+        <div class="doc">
+          <h4>ПРОТОКОЛ ВИБОРУ ПОСТАЧАЛЬНИКА № 0147</h4>
+          <div class="meta">м. Київ · 2 вересня 2026 р.</div>
+          <p><b>Предмет закупівлі:</b> ${esc(P.subj)}</p>
+          <p><b>Проєкт:</b> ${esc(pr.name)} (${esc(pr.code)}), донор ${esc(pr.donor)}. Бюджетна лінія «${esc(P.line)}».</p>
+          <p><b>Очікувана вартість:</b> ${money(P.sum)} грн з ПДВ. Поріг: ${esc(P.band)}.</p>
+          <p><b>Отримані пропозиції:</b></p>
+          <table><thead><tr><th>Постачальник</th><th class="r">Ціна, грн</th><th>Строк</th><th>Рішення</th></tr></thead><tbody>
+            ${P.offers.map(o => `<tr><td>${esc(o.sup)}</td><td class="r">${money(o.price)}</td><td>${esc(o.term)}</td><td>${o.win ? "обрано" : "відхилено"}</td></tr>`).join("")}
+          </tbody></table>
+          <p><b>Обґрунтування вибору:</b> ${esc(win.why)}</p>
+          <p><b>Конфлікт інтересів:</b> щодо обраного постачальника відсутній, декларацію підписано 02.09.2026.</p>
+          <div class="sig"><span>Менеджерка із закупівель ______________</span><span>Виконавча директорка ______________</span></div>
+          <div class="stamp">Демонстраційний зразок · тестові дані</div>
+        </div>
+      </div>
+    </div>`;
+
+  /* --- вкладка: активність --- */
+  const tFeed = `<div class="card"><div class="feed">${P.feed.map(f => `
+    <div class="fitem${f.sys ? " sys" : ""}">
+      <span class="av">${f.sys ? "◆" : esc(f.who.split(" ").map(w => w[0]).join("").slice(0, 2))}</span>
+      <span>
+        <span class="who">${esc(f.who)}${f.sys ? ` <span class="badge b-mute" style="font-size:10px"><span class="dot"></span>система</span>` : ""}${f.ai ? " " + aiMark("Крок виконала мовна модель: читання тексту пропозиції або звірка прізвищ") : ""}</span>
+        <span class="what">${esc(f.what)}</span>
+        ${f.basis ? `<span class="basis">Підстава: ${esc(f.basis)}</span>` : ""}
+      </span>
+      <time>${esc(f.t)}</time>
+    </div>`).join("")}</div></div>`;
+
+  const bodies = { budget: tBudget, offers: tOffers, route: tRoute, docs: tDocs, feed: tFeed };
+
+  return head + `<div class="body">
+    <div class="grid cardgrid" style="grid-template-columns:1fr 292px; align-items:start">
+      <div>
+        <div class="card">
+          <div class="tabs" role="tablist">
+            <button class="tab" role="tab" data-tab="budget" aria-selected="${S.tab === "budget"}">Заявка й бюджет</button>
+            <button class="tab" role="tab" data-tab="offers" aria-selected="${S.tab === "offers"}">Пропозиції · 3</button>
+            <button class="tab" role="tab" data-tab="route" aria-selected="${S.tab === "route"}">Погодження · ${rDone}/${rTotal}</button>
+            <button class="tab" role="tab" data-tab="docs" aria-selected="${S.tab === "docs"}">Документи · ${have}/${P.docs.length}</button>
+            <button class="tab" role="tab" data-tab="feed" aria-selected="${S.tab === "feed"}">Активність · ${P.feed.length}</button>
+          </div>
+          <div class="cb">${bodies[S.tab]}</div>
+        </div>
+      </div>
+
+      <div class="c3" style="display:flex; flex-direction:column; gap:13px">
+        <div class="card"><div class="cb" style="display:flex; flex-direction:column; gap:9px">
+          <button class="btn primary" id="signbtn" ${S.signed ? "disabled" : ""}>${S.signed ? "Погоджено директоркою" : "Погодити закупівлю"}</button>
+          <button class="btn" data-return="1">Повернути на доопрацювання</button>
+          <span style="color:var(--ink-3); font-size:11.5px">Ctrl+Enter — погодити. Ви бачите цю дію, бо перемкнулись у роль директорки.</span>
+        </div></div>
+
+        <div class="card narrow">
+          <div class="ch"><h3>Коротко</h3></div>
+          <dl>
+            <div class="frow"><dt>Сума</dt><dd class="num" style="font-weight:600">${money(P.sum)} ₴</dd></div>
+            <div class="frow"><dt>Потрібно до</dt><dd class="num">${esc(P.need)}</dd></div>
+            <div class="frow"><dt>Поріг</dt><dd>${esc(P.band)}</dd></div>
+            <div class="frow"><dt>Пропозицій</dt><dd>3 з 3</dd></div>
+            <div class="frow"><dt>Постачальник</dt><dd><span class="trunc">${esc(win.sup)}</span></dd></div>
+            <div class="frow"><dt>Документи</dt><dd>${have} з ${P.docs.length}</dd></div>
+            <div class="frow"><dt>Вільно на лінії</dt><dd class="num">${int(line.limit - line.used)} ₴</dd></div>
+          </dl>
+        </div>
+
+        <div class="card">
+          <div class="ch"><h3>Що лишається людині</h3></div>
+          <div class="cb" style="color:var(--ink-2); font-size:12.5px; line-height:1.7">
+            переговори з постачальниками · вибір постачальника й обґрунтування ·
+            підтвердження конфлікту інтересів · нестандартні ситуації ·
+            остаточне погодження
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function scrApprovals() {
+  const st = stateOf("approvals");
+  const head = shead("Погодження й рішення", "Дві черги: те, що чекає підпису за маршрутом, і те, де автоматика свідомо зупинилась і питає людину.", "approvals");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "approvals")}</div>`;
+
+  const segs = [
+    { k: "dec", t: "Потребують рішення", n: APPROVALS.filter(a => a.seg === "dec").length, alarm: true },
+    { k: "sign", t: "Чекають підпису", n: APPROVALS.filter(a => a.seg === "sign").length }
+  ];
+  const list = APPROVALS.filter(a => a.seg === S.apprSeg);
+  const a = APPROVALS[S.apprSel] && APPROVALS[S.apprSel].seg === S.apprSeg ? APPROVALS[S.apprSel] : list[0];
+  const ix = APPROVALS.indexOf(a);
+  const pr = a ? projById(a.pid) : null;
+
+  return head + `<div class="body flush"><div class="split">
+    <div class="left">
+      <div class="seg">${segs.map(s => `<button type="button" class="segbtn${s.alarm ? " alarm" : ""}" data-appr-seg="${s.k}" aria-pressed="${S.apprSeg === s.k}">${s.t} <i>${s.n}</i></button>`).join("")}</div>
+      ${list.map(x => `<button type="button" class="qrow" data-appr="${APPROVALS.indexOf(x)}" aria-selected="${x === a}">
+        <span class="l1"><span class="onum">${esc(x.id)}</span><span class="sum num">${money(x.sum)}</span></span>
+        <span class="l2">${esc(x.subj)}</span>
+        <span class="l2s"><span class="tag">${esc(projById(x.pid).donor)}</span> ${esc(projById(x.pid).name)}</span>
+        <span class="l3"><span class="badge ${x.seg === "dec" ? "b-crit" : "b-info"}"><span class="dot"></span>${esc(x.who.split(" · ")[0])}</span>
+          <span class="age${x.late ? " late" : ""}">${esc(x.age)}</span></span>
+      </button>`).join("")}
+    </div>
+    <div class="right">${a ? `<div style="padding:16px 18px 26px">
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><h3>${esc(a.id)} · ${esc(a.subj)}</h3>
+          <span class="badge ${a.seg === "dec" ? "b-crit" : "b-info"}"><span class="dot"></span>${a.seg === "dec" ? "рішення людини" : "підпис за маршрутом"}</span></div>
+        <dl>
+          <div class="frow"><dt>Проєкт</dt><dd><span class="tag">${esc(pr.donor)}</span> ${esc(pr.name)}</dd></div>
+          <div class="frow"><dt>Сума</dt><dd class="num" style="font-weight:600">${money(a.sum)} ₴</dd></div>
+          <div class="frow"><dt>На кому</dt><dd>${esc(a.who)}</dd></div>
+          <div class="frow"><dt>В очікуванні</dt><dd class="num" style="${a.late ? "color:var(--crit); font-weight:600" : ""}">${esc(a.age)}</dd></div>
+        </dl>
+      </div>
+      <div class="note ${a.seg === "dec" ? "crit" : "info"}" style="margin-bottom:12px"><b>Ситуація.</b> ${esc(a.why)}</div>
+      ${a.fix ? `<div class="note" style="margin-bottom:13px"><b>Варіанти.</b> ${esc(a.fix)}<br><span style="color:var(--ink-3)">Це варіанти, а не вибір системи. Рішення ухвалює людина й воно записується в історію закупівлі.</span></div>` : ""}
+      <div style="display:flex; gap:9px; flex-wrap:wrap">
+        ${a.seg === "sign"
+          ? `<button class="btn primary" data-appr-sign="1">Погодити</button><button class="btn" data-appr-return="1">Повернути на доопрацювання</button>`
+          : `<button class="btn primary" data-appr-resolve="1">Зафіксувати рішення</button><button class="btn" data-appr-escalate="1">Передати вище</button>`}
+        <button class="btn" data-open-card="${esc(a.id)}">Відкрити картку</button>
+        <span style="flex:1"></span>
+        <button class="btn danger" data-appr-cancel="1">Відхилити закупівлю</button>
+      </div>
+    </div>` : `<div class="state"><h3>Черга порожня</h3><p>Нічого не чекає вашого рішення.</p></div>`}</div>
+  </div></div>`;
+}
+
+function scrPlan() {
+  const st = stateOf("plan");
+  const head = shead("План закупівель", "Заявки команд, зведені за проєктами, бюджетними лініями й місяцями. Перебудовується щоразу, коли надходить нова заявка.", "plan");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "plan")}</div>`;
+  const pr = projById(S.planPid);
+  const planned = REQUESTS.filter(r => r.pid === S.planPid);
+
+  return head + `<div class="body">
+    <div class="toolbar" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px">
+      ${PROJECTS.map(p => `<button class="btn sm ${p.id === S.planPid ? "primary" : ""}" data-plan="${p.id}">${esc(p.name)} <span class="tag" style="border-color:currentColor">${esc(p.donor)}</span></button>`).join("")}
+    </div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
+      <div class="card">
+        <div class="ch"><h3>Бюджет проєкту</h3><span class="badge b-mute"><span class="dot"></span>${esc(pr.code)}</span>
+          <span style="margin-left:auto; color:var(--ink-3); font-size:12px">діє до ${esc(pr.till)}</span></div>
+        <div class="cb" style="border-bottom:1px solid var(--line)">
+          <div class="barrow" style="padding:0">
+            <span class="bl">Загальний бюджет проєкту</span>
+            <span class="bv">${int(pr.used)} / ${int(pr.budget)} ₴</span>
+            <span class="bar"><i class="${pct(pr.used, pr.budget) >= 90 ? "hot" : pct(pr.used, pr.budget) >= 75 ? "mid" : ""}" style="width:${pct(pr.used, pr.budget)}%"></i></span>
+            <span class="bs">використано ${pct(pr.used, pr.budget)} % · вільно ${int(pr.budget - pr.used)} ₴</span>
+          </div>
+        </div>
+        <div>${LINES[S.planPid].map(barRow).join("")}</div>
+      </div>
+      <div class="card">
+        <div class="ch"><h3>Заявки в плані на вересень</h3><span class="badge b-mute"><span class="dot"></span>${planned.length}</span></div>
+        ${planned.length ? `<div class="tblwrap" style="border:0"><table class="tbl">
+          <thead><tr><th>Заявка</th><th>Лінія</th><th class="r">Сума, ₴</th><th>Потрібно до</th><th>Стан</th></tr></thead>
+          <tbody>${planned.map(r => `<tr>
+            <td class="idc">${esc(r.id)}<span class="raw">${esc(r.subj)}</span></td>
+            <td>${esc(r.line)}</td>
+            <td class="r num">${money(r.sum)}</td>
+            <td class="num">${esc(r.need)}</td>
+            <td><span class="badge b-${r.lvl}"><span class="dot"></span>${esc(r.lvl === "ok" ? "у плані" : r.lvl === "info" ? "у роботі" : "потребує рішення")}</span></td>
+          </tr>`).join("")}</tbody>
+          <tfoot><tr><td colspan="2" class="r" style="font-weight:600">Разом заплановано</td>
+            <td class="r num" style="font-weight:600">${money(planned.reduce((a, r) => a + r.sum, 0))}</td><td colspan="2"></td></tr></tfoot>
+        </table></div>` : `<div class="state"><h3>На цей проєкт заявок немає</h3><p>За вересень команди нічого не подали.</p></div>`}
+      </div>
+    </div>
+    <div class="note info" style="margin-top:13px">
+      <b>План — це не окремий документ, який хтось веде руками.</b> Це зведення заявок: щойно команда подала потребу,
+      вона з'явилась тут, у своїй лінії, зі своїм строком. Ручного «складання плану» наприкінці місяця більше немає.
+    </div>
+  </div>`;
+}
+
+function scrRegistry() {
+  const st = stateOf("registry");
+  const head = shead("Реєстр по проєктах", "Окремий реєстр закупівель на кожен грантовий проєкт — у тому вигляді, в якому його запитує аудит донора.", "registry");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "registry")}</div>`;
+  const pr = projById(S.regPid);
+  const rows = REGISTRY[S.regPid] || [];
+
+  return head + `<div class="body">
+    <div class="toolbar" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px">
+      ${PROJECTS.map(p => `<button class="btn sm ${p.id === S.regPid ? "primary" : ""}" data-reg="${p.id}">${esc(p.name)} <span class="tag" style="border-color:currentColor">${esc(p.donor)}</span></button>`).join("")}
+      <span style="flex:1"></span>
+      <button class="btn sm" data-audit="1">Зібрати пакет для аудиту</button>
+    </div>
+    <div class="note" style="margin-bottom:12px">
+      <b>${esc(pr.name)}</b> · ${esc(pr.code)} · донор ${esc(pr.donor)} · діє до ${esc(pr.till)} ·
+      бюджет ${int(pr.budget)} ₴, використано ${int(pr.used)} ₴ (${pct(pr.used, pr.budget)} %)
+    </div>
+    <div class="tblwrap"><table class="tbl">
+      <thead><tr><th>Закупівля</th><th>Предмет</th><th class="r">Сума, ₴</th><th>Постачальник</th><th>Документи</th><th>Строк</th><th>Стан</th></tr></thead>
+      <tbody>${rows.map(r => `<tr>
+        <td class="idc">${esc(r.id)}</td>
+        <td><span class="trunc" style="max-width:280px">${esc(r.subj)}</span></td>
+        <td class="r num">${money(r.sum)}</td>
+        <td>${r.sup === "—" ? `<span style="color:var(--ink-3)">не обрано</span>` : `<span class="trunc" style="max-width:190px">${esc(r.sup)}</span>`}</td>
+        <td><span class="badge ${r.docs >= 8 ? "b-ok" : r.docs >= 5 ? "b-warn" : "b-mute"}"><span class="dot"></span>${r.docs} з 8</span></td>
+        <td class="num" style="${/прострочено/.test(r.need) ? "color:var(--crit); font-weight:600" : ""}">${esc(r.need)}</td>
+        <td>${badge(REG_ST, r.st)}</td>
+      </tr>`).join("")}</tbody>
+      <tfoot><tr><td colspan="2" class="r" style="font-weight:600">Разом за проєктом</td>
+        <td class="r num" style="font-weight:600">${money(rows.reduce((a, r) => a + r.sum, 0))}</td><td colspan="4"></td></tr></tfoot>
+    </table></div>
+    <p style="color:var(--ink-3); font-size:12px; margin-top:12px">
+      Колонка «Документи» рахує 8 позицій комплекту: ТЗ, пропозиції, порівняльна таблиця, протокол, декларація про конфлікт інтересів, договір, рахунок, акт.
+      Закупівля з неповним комплектом не вважається закритою, навіть якщо товар отримано.
+    </p>
+  </div>`;
+}
+
+function scrSuppliers() {
+  const st = stateOf("suppliers");
+  const head = shead("Постачальники", "База перевірених постачальників. Реєстраційні дані й санкційні переліки перевіряє система, конфлікт інтересів підтверджує людина.", "suppliers");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "suppliers")}</div>`;
+  return head + `<div class="body">
+    <div class="note warn" style="margin-bottom:13px">
+      <b>Два постачальники не готові до роботи.</b> ФОП Марченко Д. В. — конфлікт інтересів не підтверджено й не спростовано;
+      ТОВ «Оренда Простір» — санкційна перевірка не завершена, бо джерело недоступне з 03.09.
+      Закупівлі з ними зупинені: недоступність перевірки не означає «все гаразд».
+    </div>
+    <div class="tblwrap"><table class="tbl">
+      <thead><tr><th>Постачальник</th><th>Код</th><th>Реєстр</th><th>Санкції</th><th>Конфлікт інтересів</th><th class="r">Закупівель</th><th class="r">Сума, ₴</th><th>Примітка</th></tr></thead>
+      <tbody>${SUPPLIERS.map(s => `<tr aria-selected="${s.conf !== "ok" || s.sanc !== "ok"}">
+        <td><b>${esc(s.name)}</b></td>
+        <td class="idc">${esc(s.code)}</td>
+        <td>${badge(VET, s.reg)}</td>
+        <td>${badge(VET, s.sanc)}</td>
+        <td>${badge(VET, s.conf)}${s.conf === "bad" ? " " + aiMark("Ознаку знайдено звіркою прізвищ засновників з реєстром персоналу. Це підказка, а не висновок: підтверджує або спростовує людина") : ""}</td>
+        <td class="r num">${s.deals}</td>
+        <td class="r num">${money(s.sum)}</td>
+        <td><span class="trunc" style="max-width:260px; color:var(--ink-2)">${esc(s.note)}</span></td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function scrAutomation() {
+  const st = stateOf("automation");
+  const head = shead("Автоматизації та історія запусків", "Що система робить сама, що вже зробила і як полагодити те, що впало. Історію зберігаємо 90 днів.", "automation");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "automation")}</div>`;
+  const q = S.runQuery.trim().toLowerCase();
+  const runs = q ? RUNS.filter(r => (r.ent + " " + r.a).toLowerCase().includes(q)) : RUNS;
+
+  return head + `<div class="body">
+    ${S.killed ? `<div class="note crit" style="margin-bottom:13px"><b>Автоматику зупинено.</b> Заявки приймаються й накопичуються, але перевірки, маршрути й нагадування не запускаються. Увімкнути може будь-який менеджер.</div>` : ""}
+    <div class="note dark" style="margin-bottom:14px">
+      <b>Межа проведена свідомо.</b> Система готує, звіряє, будує маршрут і нагадує.
+      Переговори, вибір постачальника, підтвердження конфлікту інтересів, нестандартні ситуації
+      й остаточне погодження залишаються за людиною — і жодна автоматизація нижче не може їх виконати.
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="ch"><h3>Автоматизації</h3><span class="badge b-mute"><span class="dot"></span>рівень автономії — налаштування, а не властивість коду</span></div>
+      ${AUTOS.map(a => `<div class="autorow">
+        <div>
+          <span class="an">${esc(a.name)}</span>
+          <span class="ad">${esc(a.desc)}</span>
+          <span class="ad" style="color:var(--ink-3); font-size:11.5px">Обмеження: ${esc(a.limit)} · Останній запуск: ${a.silent ? `<b style="color:var(--crit)">${esc(a.last)}</b>` : esc(a.last)}</span>
+        </div>
+        <div class="lvl" role="group" aria-label="Рівень автономії: ${esc(a.name)}">
+          <button data-lvl="${a.key}:1" aria-pressed="${a.lvl === 1}" title="Готує, робить людина">радить</button>
+          <button data-lvl="${a.key}:2" aria-pressed="${a.lvl === 2}" title="Робить усе, крім останнього кроку">з підтвердженням</button>
+          <button data-lvl="${a.key}:3" aria-pressed="${a.lvl === 3}" title="Робить сама, є kill switch">сама</button>
+        </div>
+        <button class="sw" role="switch" aria-checked="${a.on && !S.killed}" aria-label="Увімкнено: ${esc(a.name)}" data-toggle="${a.key}"></button>
+        <button class="btn sm" data-runsearch="${esc(a.name)}">Запуски</button>
+      </div>`).join("")}
+    </div>
+
+    <div class="toolbar" style="display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin-bottom:11px">
+      <div class="searchwrap" style="max-width:340px">
+        <span class="mag" aria-hidden="true">⌕</span>
+        <input id="runq" value="${esc(S.runQuery)}" placeholder="Що було із ЗК-2026-0147…" aria-label="Пошук запусків">
+      </div>
+      <span class="badge b-ok"><span class="dot"></span>успішних за 24 год: 148</span>
+      <span class="badge b-crit"><span class="dot"></span>помилок: 1</span>
+      <span class="badge b-warn"><span class="dot"></span>чекають людину: 7</span>
+      <span style="margin-left:auto; color:var(--ink-3); font-size:12px">Показано ${runs.length} з 512</span>
+    </div>
+
+    <div class="tblwrap" style="margin-bottom:14px"><table class="tbl">
+      <thead><tr><th>Час</th><th>Автоматизація</th><th>Режим</th><th>Запис</th><th>Тривалість</th><th>Стан</th><th></th></tr></thead>
+      <tbody>${runs.length ? runs.map(r => `<tr aria-selected="${!!r.sel}">
+        <td class="num">${esc(r.t)}</td><td>${esc(r.a)}</td><td>${esc(r.mode)}</td>
+        <td class="idc">${esc(r.ent)}${r.retry ? `<span class="raw">${esc(r.retry)}</span>` : ""}</td>
+        <td class="num">${esc(r.dur)}</td><td>${badge(RUN_ST, r.st)}</td>
+        <td>${r.st === "fail" ? `<button class="btn sm" data-run="1">Розібрати</button>` : ""}</td>
+      </tr>`).join("") : `<tr><td colspan="7"><div class="state"><h3>Запусків за цим запитом немає</h3><p>Спробуйте номер закупівлі без префікса «ЗК-» або оберіть іншу автоматизацію.</p></div></td></tr>`}</tbody>
+    </table></div>
+
+    <div class="card">
+      <div class="ch"><h3>Запуск № ${esc(FAILED_RUN.id)} · ${esc(FAILED_RUN.a)}</h3>${badge(RUN_ST, "fail")}
+        <span style="color:var(--ink-3); font-size:12px; margin-left:auto">${esc(FAILED_RUN.ent)} · ${esc(FAILED_RUN.t)}</span></div>
+      <div class="cb">
+        <div class="note crit" style="margin-bottom:13px"><b>${esc(FAILED_RUN.human)}</b><br><br>Що зробити: ${esc(FAILED_RUN.fix)}</div>
+        <div class="steps">${FAILED_RUN.steps.map(s => `<div class="step ${s.st === "fail" ? "fail" : ""}">
+          <span class="n">${s.n}</span>
+          <span>${esc(s.t)}<span class="io">${esc(s.io)}</span></span>
+          <span>${badge(RUN_ST, s.st === "fail" ? "fail" : "ok")}</span>
+        </div>`).join("")}</div>
+        <div style="display:flex; gap:9px; margin-top:14px; flex-wrap:wrap">
+          <button class="btn primary" data-retry-run="orig">Повторити перевірку</button>
+          <button class="btn" data-retry-run="manual">Перевірити вручну й прикріпити доказ</button>
+          <button class="btn quiet">Показати технічні деталі</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function scrDashboard() {
+  const st = stateOf("dashboard");
+  const head = shead("Панель", `Дані станом на ${esc(DASH.updated)} · період: ${esc(DASH.period)}`, "dashboard");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "dashboard")}</div>`;
+  const max = Math.max(...DASH.spark);
+
+  return head + `<div class="body">
+    <div class="kpis" style="margin-bottom:14px">${DASH.kpis.map(k => `
+      <button class="kpi" data-go="${k.go}">
+        <span class="k">${esc(k.k)}</span>
+        <span class="v">${esc(k.v)}</span>
+        <span class="badge b-${k.tone}"><span class="dot"></span>${esc(k.d)}</span>
+      </button>`).join("")}</div>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
+      <div class="card"><div class="ch"><h3>Потребує уваги</h3><span class="badge b-crit"><span class="dot"></span>5</span></div>
+        <div class="cb" style="padding:0">
+          ${DASH.attention.map(a => `<button class="autorow" data-go="${a.go}" style="width:100%; text-align:left; border:0; border-bottom:1px solid var(--line); background:transparent; cursor:pointer; grid-template-columns:8px 1fr auto">
+            <span class="badge b-${a.tone}" style="padding:0; width:8px; height:8px; border-radius:50%; border:0"></span>
+            <span><span class="an">${esc(a.t)}</span><span class="ad">${esc(a.s)}</span></span>
+            <span style="color:var(--ink-3)">→</span>
+          </button>`).join("")}
+        </div>
+      </div>
+
+      <div class="card"><div class="ch"><h3>Заявок на день, останні 14 днів</h3></div>
+        <div class="cb">
+          <div class="spark">${DASH.spark.map((v, i) => `<i class="${i >= 12 ? "hi" : ""}" style="height:${Math.round(v / max * 100)}%" title="${v} заявок"></i>`).join("")}</div>
+          <p style="color:var(--ink-3); font-size:11.5px; margin:9px 0 0">Провали 30.08 і 31.08 — вихідні. Пік 01.09 — початок місяця, команди подають потреби на вересень.</p>
+        </div>
+      </div>
+
+      ${S.role === "manager"
+        ? `<div class="card"><div class="ch"><h3>Кошторис оплати праці за проєктами</h3></div><div class="cb">${stateBlock("noperm", "dashboard")}</div></div>`
+        : `<div class="card"><div class="ch"><h3>Готовність до аудиту</h3></div><div class="cb"><dl style="margin:0 -13px">
+            <div class="frow"><dt>Закупівель за рік</dt><dd class="num">164</dd></div>
+            <div class="frow"><dt>Повний комплект</dt><dd class="num">155 (94,5 %)</dd></div>
+            <div class="frow"><dt>Без акта понад 30 днів</dt><dd class="num" style="color:var(--crit)">3</dd></div>
+            <div class="frow"><dt>Єдиний постачальник</dt><dd class="num">11 (з обґрунтуванням — 9)</dd></div>
+            <div class="frow"><dt>Середній строк заявка → договір</dt><dd class="num">6 днів</dd></div>
+            <div class="frow"><dt>Було до впровадження</dt><dd class="num">19 днів</dd></div>
+          </dl><p style="color:var(--ink-3); font-size:11.5px; margin:9px 0 0">Цифри прототипу планові. Фактичні рахуються з першого тижня роботи й показуються тут же.</p></div></div>`}
+    </div>
+  </div>`;
+}
+
+/* -------------------------------------------------------------- рендер */
+const SCREENS = { requests: scrRequests, card: scrCard, approvals: scrApprovals, plan: scrPlan,
+  registry: scrRegistry, suppliers: scrSuppliers, automation: scrAutomation, dashboard: scrDashboard };
+const TITLES = { requests: "Заявки на закупівлю", card: "ЗК-2026-0147", approvals: "Погодження й рішення",
+  plan: "План закупівель", registry: "Реєстр по проєктах", suppliers: "Постачальники",
+  automation: "Автоматизації", dashboard: "Панель" };
+
+function render() {
+  $("#main").innerHTML = `<div class="screen">${SCREENS[S.screen]()}</div>`;
+  document.querySelectorAll(".navitem[data-go]").forEach(b => {
+    const on = b.dataset.go === S.screen || (S.screen === "card" && b.dataset.go === "requests");
+    if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
+  $("#rolename").textContent = S.role === "manager" ? "Менеджерка із закупівель" : "Виконавча директорка";
+  const k = $("#kill");
+  k.setAttribute("aria-pressed", String(S.killed));
+  k.classList.toggle("off", S.killed);
+  k.textContent = S.killed ? "▶ Увімкнути автоматику" : "■ Зупинити автоматику";
+  document.title = TITLES[S.screen] + " · Закупівлі ДОЛАДУ";
+}
+const go = s => { S.screen = s; render(); $("#main").scrollTop = 0; };
+
+/* --------------------------------------------------- поповери, модалки */
+const closePop = () => { $("#popholder").innerHTML = ""; };
+function openPop(anchor, why) {
+  const r = anchor.getBoundingClientRect();
+  $("#popholder").innerHTML = `<div class="pop" role="dialog" aria-label="Пояснення AI" style="left:${Math.min(r.left, innerWidth - 356)}px; top:${Math.min(r.bottom + 6, innerHeight - 250)}px">
+    <button class="close" data-closepop="1" aria-label="Закрити">✕</button>
+    <h4><span class="ai" style="cursor:default">AI</span> Звідки це значення</h4>
+    <p style="margin:0; color:var(--ink-2)">${esc(why)}</p>
+    <dl>
+      <dt>Модель</dt><dd>Claude Haiku 4.5, відповідь за схемою</dd>
+      <dt>Роль моделі</dt><dd>сприйняття — прочитати документ і звірити. Рішення (вибір постачальника, конфлікт інтересів, погодження) ухвалює людина</dd>
+      <dt>Якщо помилково</dt><dd>виправте значення — правка збережеться й наступного разу спрацює правилом, без моделі</dd>
+      <dt>Дані</dt><dd>демонстраційні, вигадані</dd>
+    </dl>
+  </div>`;
+}
+function modal(title, bodyHtml, footHtml) {
+  $("#modalholder").innerHTML = `<div class="backdrop" data-backdrop="1"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <header><h3>${esc(title)}</h3></header><div class="mb">${bodyHtml}</div><footer>${footHtml}</footer></div></div>`;
+}
+const closeModal = () => { $("#modalholder").innerHTML = ""; };
+
+function signGate() {
+  modal("Погодження закупівлі ЗК-2026-0147", `
+    <div class="note info" style="margin-bottom:12px">Ваш підпис — останній крок маршруту. Після нього закупівля переходить до укладення договору.</div>
+    <dl style="margin:0 -13px">
+      <div class="frow"><dt>Предмет</dt><dd>Ноутбуки для навчального центру, 12 шт</dd></div>
+      <div class="frow"><dt>Проєкт</dt><dd>Повернення до праці (IRC-2026-114)</dd></div>
+      <div class="frow"><dt>Сума</dt><dd class="num" style="font-weight:600">384 000,00 ₴ з ПДВ</dd></div>
+      <div class="frow"><dt>Постачальник</dt><dd>ТОВ «Технополіс Груп», ЄДРПОУ 39214785</dd></div>
+      <div class="frow"><dt>Не найнижча ціна</dt><dd>так — обґрунтування додано до протоколу</dd></div>
+      <div class="frow"><dt>Конфлікт інтересів</dt><dd>відсутній, декларацію підписано 02.09</dd></div>
+      <div class="frow"><dt>Бюджет після</dt><dd class="num">на лінії залишиться 57 600 ₴</dd></div>
+      <div class="frow"><dt>Увага</dt><dd>ціна зафіксована постачальником до <b>11.09</b></dd></div>
+    </dl>`,
+    `<button class="btn primary" data-do-sign="1">Погодити</button>
+     <button class="btn" data-closemodal="1">Спершу подивитись пропозиції</button>
+     <span style="flex:1"></span>
+     <span style="color:var(--ink-3); font-size:12px">Якщо не відповісти — закупівля залишиться в черзі</span>`);
+}
+function doSign() {
+  closeModal();
+  const b = $("#signbtn"); if (!b) return;
+  b.classList.add("busy"); b.textContent = "Записуємо погодження…"; b.disabled = true;
+  setTimeout(() => {
+    S.signed = true;
+    P.route[3] = { s: "done", who: "Марія Демченко", role: "Виконавча директорка", act: "Погодила закупівлю", when: "04.09, щойно" };
+    render();
+    toast("Закупівлю <b>ЗК-2026-0147</b> погоджено. Наступний крок — договір, юристка отримала завдання.",
+      () => { S.signed = false; P.route[3] = { s: "wait", who: "Марія Демченко", role: "Виконавча директорка", act: "Остаточне погодження — поріг понад 100 000 ₴", when: "чекає 2 дні" }; render(); });
+  }, 900);
+}
+
+/* ------------------------------------------------------------- демо */
+const DEMO = [
+  { s: "requests", pre: () => { S.seg = "new"; S.sel = "ЗК-2026-0151"; },
+    t: "1 · Заявка. Команди подають потреби через форму: проєкт, бюджетна лінія, сума, строк. Черга відсортована за строком потреби, а не за датою подання." },
+  { s: "card", pre: () => { S.tab = "budget"; },
+    t: "2 · Перевірка бюджету. Вісім перевірок: проєкт активний, лінія має залишок, сума вкладається, календар платежів витримує, строк постачання встигає, поріг визначено. Дві позначені — їх дивиться людина." },
+  { s: "card", pre: () => { S.tab = "offers"; },
+    t: "3 · Пропозиції. Порівняльна таблиця за сімома критеріями. Систему навмисно не просили обрати переможця — вона зводить дані й підсвічує невідповідність ТЗ і конфлікт інтересів." },
+  { s: "card", pre: () => { S.tab = "offers"; }, act: "why",
+    t: "4 · Вибір. Обрано не найдешевшу пропозицію — і це нормально, якщо є письмове обґрунтування. Саме воно потім читається на аудиті донора." },
+  { s: "card", pre: () => { S.tab = "route"; },
+    t: "5 · Погодження. Маршрут побудований за матрицею повноважень: 384 000 ₴ потрапляють у поріг 100–500 тис., тому в маршруті з'явилась директорка. Погоджує вручну кожен крок." },
+  { s: "card", pre: () => { S.tab = "docs"; },
+    t: "6 · Комплект документів. Вісім позицій: ТЗ, пропозиції, таблиця, протокол, декларація, договір, рахунок, акт. Протокол система готує чернеткою — підписує людина." },
+  { s: "registry", pre: () => { S.regPid = "p1"; },
+    t: "7 · Реєстр проєкту. Окремий реєстр на кожен грант — у тому вигляді, в якому його питає аудит. Одна кнопка збирає весь пакет документів по закупівлі." }
+];
+let demoIx = -1, demoTimer = null, demoTick = null;
+const DEMO_MS = 13000;
+
+function demoStep(n) {
+  demoIx = n;
+  if (n >= DEMO.length) {
+    clearInterval(demoTick); clearTimeout(demoTimer);
+    $("#demoholder").innerHTML = `<div class="demobar"><span>Демонстрацію завершено: 90 секунд, сім кроків, тестові дані.</span>
+      <button data-demo="restart">Спочатку</button><button data-demo="stop">Закрити</button></div>`;
+    return;
+  }
+  const d = DEMO[n];
+  if (d.pre) d.pre();
+  S.screen = d.s; render(); closeModal(); $("#main").scrollTop = 0;
+  if (d.act === "why") {
+    const el = document.querySelectorAll(".card")[document.querySelectorAll(".card").length - 1];
+    if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+  $("#demoholder").innerHTML = `<div class="demobar">
+    <span class="step-n">${n + 1}/${DEMO.length}</span><span>${esc(d.t)}</span>
+    <button data-demo="prev" ${n === 0 ? "disabled" : ""}>←</button>
+    <button data-demo="next">→</button>
+    <button data-demo="stop">Вийти</button>
+    <span class="bar2" style="width:0"></span>
+  </div>`;
+  clearTimeout(demoTimer); clearInterval(demoTick);
+  const started = Date.now();
+  demoTick = setInterval(() => {
+    const bar = document.querySelector(".demobar .bar2");
+    if (bar) bar.style.width = Math.min(100, (Date.now() - started) / DEMO_MS * 100) + "%";
+  }, 120);
+  demoTimer = setTimeout(() => demoStep(n + 1), DEMO_MS);
+}
+function demoStop() { clearTimeout(demoTimer); clearInterval(demoTick); demoIx = -1; $("#demoholder").innerHTML = ""; }
+
+/* ---------------------------------------------------------- обробники */
+document.addEventListener("click", e => {
+  const t = e.target, hit = sel => t.closest(sel);
+
+  if (hit("[data-closepop]")) return closePop();
+  if (t.closest(".ai")) { const a = t.closest(".ai"); openPop(a, a.dataset.ai); return; }
+  if (!t.closest(".pop")) closePop();
+
+  if (hit("[data-backdrop]") && t.classList.contains("backdrop")) return closeModal();
+  if (hit("[data-closemodal]")) return closeModal();
+  if (hit("[data-do-sign]")) return doSign();
+
+  const oc = hit("[data-open-card]");
+  if (oc) {
+    if (oc.dataset.openCard !== "ЗК-2026-0147") toast("У прототипі детально заповнена одна закупівля — <b>ЗК-2026-0147</b>. Відкриваю її.");
+    S.tab = "budget"; return go("card");
+  }
+  const nav = hit("[data-go]"); if (nav) return go(nav.dataset.go);
+
+  const seg = hit("[data-seg]"); if (seg) { S.seg = seg.dataset.seg; const f = REQUESTS.find(r => r.seg === S.seg); S.sel = f ? f.id : null; return render(); }
+  const pick = hit("[data-pick]"); if (pick) { S.sel = pick.dataset.pick; return render(); }
+  const tab = hit("[data-tab]"); if (tab) { S.tab = tab.dataset.tab; return render(); }
+  const as = hit("[data-appr-seg]"); if (as) { S.apprSeg = as.dataset.apprSeg; S.apprSel = APPROVALS.findIndex(a => a.seg === S.apprSeg); return render(); }
+  const ap = hit("[data-appr]"); if (ap) { S.apprSel = +ap.dataset.appr; return render(); }
+  const pl = hit("[data-plan]"); if (pl) { S.planPid = pl.dataset.plan; return render(); }
+  const rg = hit("[data-reg]"); if (rg) { S.regPid = rg.dataset.reg; return render(); }
+
+  if (hit("[data-next-req]")) { toast("Наступна заявка — <b>ЗК-2026-0151</b>, оренда залу, 46 000,00 ₴."); return; }
+  if (hit("[data-handoff]")) { toast("Заявку передано <b>Наталі Ковтун</b>. Вона побачить її у своїй черзі."); return; }
+  if (hit("[data-return]")) {
+    modal("Повернути на доопрацювання", `<p style="margin:0 0 11px">Закупівля повернеться до менеджерки із закупівель. Маршрут зупиниться на поточному кроці, попередні погодження збережуться.</p>
+      <label class="u" for="rr">Що треба доопрацювати — побачить менеджерка</label>
+      <textarea id="rr" style="width:100%; min-height:74px; margin-top:6px; padding:8px; border:1px solid var(--line-strong); border-radius:var(--r); background:var(--surface)">Уточніть, чи можна отримати гарантію 24 місяці від ІТ-Партнера — тоді різниця в ціні стане суттєвою.</textarea>`,
+      `<button class="btn primary" data-closemodal="1">Повернути</button><button class="btn" data-closemodal="1">Скасувати</button>`);
+    return;
+  }
+  if (hit("[data-audit]")) {
+    modal("Пакет документів для аудиту", `
+      <div class="note" style="margin-bottom:12px">Система збере всі документи закупівель проєкту в один архів з описом і контрольними сумами файлів.</div>
+      <dl style="margin:0 -13px">
+        <div class="frow"><dt>Проєкт</dt><dd>${esc(projById(S.regPid).name)} (${esc(projById(S.regPid).code)})</dd></div>
+        <div class="frow"><dt>Закупівель</dt><dd>${(REGISTRY[S.regPid] || []).length}</dd></div>
+        <div class="frow"><dt>Повних комплектів</dt><dd>${(REGISTRY[S.regPid] || []).filter(r => r.docs >= 8).length}</dd></div>
+        <div class="frow"><dt>Неповних</dt><dd style="color:var(--crit); font-weight:600">${(REGISTRY[S.regPid] || []).filter(r => r.docs < 8).length} — увійдуть у пакет із позначкою «бракує документів»</dd></div>
+      </dl>
+      <div class="note warn" style="margin-top:12px">Неповні комплекти <b>не ховаються</b> з пакета. Аудитор побачить їх однаково, а прихований пропуск дорожчий за визнаний.</div>`,
+      `<button class="btn primary" data-closemodal="1">Зібрати пакет</button><button class="btn" data-closemodal="1">Скасувати</button>`);
+    return;
+  }
+
+  if (hit("[data-appr-sign]")) { toast("Погоджено. Закупівля пішла далі маршрутом.", () => toast("Погодження скасовано.")); return; }
+  if (hit("[data-appr-return]")) { toast("Повернуто на доопрацювання менеджерці із закупівель."); return; }
+  if (hit("[data-appr-resolve]")) {
+    const a = APPROVALS[S.apprSel];
+    modal("Зафіксувати рішення", `<p style="margin:0 0 11px"><b>${esc(a.id)}</b> · ${esc(a.subj)}</p>
+      <div class="note" style="margin-bottom:12px">${esc(a.fix || "")}</div>
+      <label class="u" for="dc">Рішення й обґрунтування — потрапить у протокол і в пакет для аудиту</label>
+      <textarea id="dc" style="width:100%; min-height:84px; margin-top:6px; padding:8px; border:1px solid var(--line-strong); border-radius:var(--r); background:var(--surface)"></textarea>
+      <p style="color:var(--ink-3); font-size:12px; margin:9px 0 0">Обґрунтування обов'язкове: саме воно закриває питання аудитора, а не сам факт рішення.</p>`,
+      `<button class="btn primary" data-closemodal="1">Зафіксувати</button><button class="btn" data-closemodal="1">Скасувати</button>`);
+    return;
+  }
+  if (hit("[data-appr-escalate]")) { toast("Передано <b>Марії Демченко</b> (виконавча директорка)."); return; }
+  if (hit("[data-appr-cancel]")) { toast("Відхилення закупівлі потребує причини — відкрийте картку й опишіть її."); return; }
+
+  const lvl = hit("[data-lvl]"); if (lvl) {
+    const [k, n] = lvl.dataset.lvl.split(":"); const a = AUTOS.find(x => x.key === k);
+    a.lvl = +n; render();
+    toast(`«${esc(a.name)}» — рівень <b>${["", "радить", "з підтвердженням", "робить сама"][+n]}</b>. Зміна записана в історію налаштувань.`);
+    return;
+  }
+  const tg = hit("[data-toggle]"); if (tg) { const a = AUTOS.find(x => x.key === tg.dataset.toggle); a.on = !a.on; render(); toast(`«${esc(a.name)}» ${a.on ? "увімкнено" : "вимкнено"}.`); return; }
+  const rs = hit("[data-runsearch]"); if (rs) { S.runQuery = rs.dataset.runsearch; return render(); }
+  const rr = hit("[data-retry-run]"); if (rr) {
+    modal("Перевірка постачальника — що далі", `<div class="note ${rr.dataset.retryRun === "orig" ? "info" : "warn"}" style="margin-bottom:12px">
+        ${rr.dataset.retryRun === "orig"
+          ? "Повторний запуск звернеться до санкційного джерела ще раз. Якщо воно й далі недоступне, постачальник залишиться в стані «перевірка не завершена»."
+          : "Ручна перевірка: ви відкриваєте джерело самі, а до постачальника прикріплюється скріншот і ваш підпис. Це прийнятний доказ для аудиту."}</div>
+      <div class="note"><b>Стан постачальника не зміниться сам по собі.</b> Поки перевірка не завершена, закупівлі з ТОВ «Оренда Простір» не рухаються далі маршруту — недоступність джерела не тлумачиться на користь постачальника.</div>`,
+      `<button class="btn primary" data-closemodal="1">${rr.dataset.retryRun === "orig" ? "Повторити" : "Перейти до ручної перевірки"}</button><button class="btn" data-closemodal="1">Скасувати</button>`);
+    return;
+  }
+  if (hit("[data-run]")) { toast("Розбір запуску показано нижче в картці."); return; }
+
+  const stt = hit("[data-retry]"); if (stt) { S.states[stt.dataset.retry] = "ok"; return render(); }
+  if (hit("[data-ask]")) { toast("Запит на доступ надіслано <b>Наталі Ковтун</b> (фінансова менеджерка)."); return; }
+
+  const dm = hit("[data-demo]"); if (dm) {
+    const a = dm.dataset.demo;
+    if (a === "stop") return demoStop();
+    if (a === "restart") return demoStep(0);
+    if (a === "next") { clearTimeout(demoTimer); clearInterval(demoTick); return demoStep(demoIx + 1); }
+    clearTimeout(demoTimer); clearInterval(demoTick); return demoStep(Math.max(0, demoIx - 1));
+  }
+  if (hit("#demobtn")) return demoStep(0);
+
+  if (hit("#themebtn")) {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const next = cur === "dark" ? "light" : cur === "light" ? null : "dark";
+    if (next) document.documentElement.setAttribute("data-theme", next);
+    else document.documentElement.removeAttribute("data-theme");
+    toast(`Тема: <b>${next === "dark" ? "темна" : next === "light" ? "світла" : "як у системі"}</b>.`);
+    return;
+  }
+  if (hit("#kill")) {
+    S.killed = !S.killed;
+    if (S.killed) toast("<b>Автоматику зупинено.</b> Заявки приймаються, перевірки й нагадування — ні.", () => { S.killed = false; render(); });
+    else toast("Автоматику увімкнено. Черга перевірок обробиться протягом кількох хвилин.");
+    return render();
+  }
+  if (hit("#rolepick")) {
+    S.role = S.role === "manager" ? "chief" : "manager";
+    S.screen = S.role === "manager" ? "requests" : "dashboard";
+    render();
+    toast(S.role === "manager" ? "Роль: <b>менеджерка із закупівель</b>. Стартовий екран — заявки." : "Роль: <b>виконавча директорка</b>. Стартовий екран — панель, і з'явилась дія «Погодити закупівлю».");
+    return;
+  }
+  if (t.id === "signbtn" && !S.signed) return signGate();
+});
+
+document.addEventListener("input", e => {
+  if (e.target.id === "runq") {
+    S.runQuery = e.target.value; const p = e.target.selectionStart; render();
+    const n = $("#runq"); if (n) { n.focus(); n.setSelectionRange(p, p); }
+  }
+});
+document.addEventListener("change", e => {
+  const s = e.target.closest("[data-state]");
+  if (s) { S.states[s.dataset.state] = s.value; render(); }
+});
+
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); $("#gsearch").focus(); return; }
+  if (e.key === "Escape") {
+    const overlay = $("#popholder").innerHTML || $("#modalholder").innerHTML;
+    closePop(); closeModal();
+    if (!overlay && S.screen === "card") go("requests");
+    return;
+  }
+  const aiEl = e.target.closest && e.target.closest(".ai");
+  if (aiEl && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); e.stopPropagation(); openPop(aiEl, aiEl.dataset.ai); return; }
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && S.screen === "card") { e.preventDefault(); return signGate(); }
+  if (typing) return;
+
+  if (S.screen === "requests") {
+    const list = REQUESTS.filter(r => r.seg === S.seg);
+    const i = list.findIndex(r => r.id === S.sel);
+    if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); S.sel = list[Math.min(i + 1, list.length - 1)].id; return render(); }
+    if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); S.sel = list[Math.max(i - 1, 0)].id; return render(); }
+    if (e.key === "Enter") { e.preventDefault(); S.tab = "budget"; return go("card"); }
+  }
+  const keys = { "1": "requests", "2": "approvals", "3": "plan", "4": "registry", "5": "suppliers", "6": "automation", "7": "dashboard" };
+  if (keys[e.key]) go(keys[e.key]);
+});
+
+render();
+</script>
+<!--ARTIFACT:END-->
+</body>
+</html>
