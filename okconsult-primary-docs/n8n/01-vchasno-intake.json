@@ -1,0 +1,171 @@
+{
+  "name": "Первинка 01 — Приймання документів з Вчасно",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Приймання документів з Вчасно (архетип: документ-екстракція, транспорт ЕДО)\n\nДокументи з Вчасно приходять СТРУКТУРОВАНИМИ (XML). Мовна модель тут не потрібна взагалі —\nце найдешевший і найточніший канал. LLM підключається лише в workflow 02 (пошта/скани).\n\nДедуп — за id документа у Вчасно, ДО будь-якої обробки.\nПорядок: Вчасно → дедуп → XML → sub-workflow 03 (зіставлення й рішення).",
+        "height": 260,
+        "width": 520
+      },
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "name": "Про що цей workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-320, -260]
+    },
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "minutes", "minutesInterval": 5 }] }
+      },
+      "id": "a0000000-0000-4000-8000-000000000002",
+      "name": "Розклад — кожні 5 хв",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-320, 40]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select id, name, vchasno_account\nfrom clients\nwhere active = true and vchasno_account is not null;",
+        "options": {}
+      },
+      "id": "a0000000-0000-4000-8000-000000000003",
+      "name": "Клієнти з Вчасно",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [-100, 40],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://vchasno.ua/api/v2/documents",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "status", "value": "signed" },
+            { "name": "direction", "value": "incoming" },
+            { "name": "updated_from", "value": "={{ new Date(Date.now() - 30*60*1000).toISOString() }}" },
+            { "name": "limit", "value": "100" }
+          ]
+        },
+        "options": { "timeout": 30000, "response": { "response": { "neverError": false } } }
+      },
+      "id": "a0000000-0000-4000-8000-000000000004",
+      "name": "Вчасно — нові документи",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [120, 40],
+      "credentials": { "httpHeaderAuth": { "id": "REPLACE_AFTER_IMPORT", "name": "Вчасно API (ApiKey)" } },
+      "notes": "Точні назви полів і шлях звірити з інструкцією до API Вчасно.ЕДО (vchasno.ua/integration → Google Doc). Це припущення, а не факт."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Розгортаємо відповідь у по-документні items і одразу рахуємо ключі ідемпотентності.\nconst out = [];\nfor (const item of $input.all()) {\n  const client = item.json.id || item.json.client_id;\n  const docs = item.json.documents || item.json.data || [];\n  for (const d of docs) {\n    const number = String(d.number ?? d.doc_number ?? '').trim();\n    const date = String(d.date ?? d.doc_date ?? '').slice(0, 10);\n    const edrpou = String(d.counterparty?.edrpou ?? d.sender_edrpou ?? '').trim();\n    const type = String(d.type ?? 'ВН').trim();\n    if (!number || !date) continue; // без номера й дати природного ключа немає — у DLQ\n    out.push({\n      json: {\n        client_id: client,\n        source: 'vchasno',\n        source_ref: String(d.id),\n        natural_key: [client, edrpou, type, number, date].join('|'),\n        doc_type: type,\n        doc_number: number,\n        doc_date: date,\n        cp_edrpou: edrpou,\n        cp_name: d.counterparty?.name ?? d.sender_name ?? '',\n        signed: Boolean(d.signed ?? true),\n        raw: d\n      }\n    });\n  }\n}\nreturn out;"
+      },
+      "id": "a0000000-0000-4000-8000-000000000005",
+      "name": "Розгорнути й порахувати ключі",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [340, 40]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into processed_sources (source, external_id, client_id)\nvalues ('vchasno', $1, $2)\non conflict (source, external_id) do nothing\nreturning external_id;",
+        "options": { "queryReplacement": "={{ $json.source_ref }},{{ $json.client_id }}" }
+      },
+      "id": "a0000000-0000-4000-8000-000000000006",
+      "name": "Дедуп за id документа",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [560, 40],
+      "alwaysOutputData": true,
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } },
+      "notes": "Порожній результат = документ уже приймали. Це і є захист від повторної доставки."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose", "version": 2 },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.external_id }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "exists", "singleValue": true }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a0000000-0000-4000-8000-000000000007",
+      "name": "Документ новий?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [780, 40]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://vchasno.ua/api/v2/documents/{{ $('Розгорнути й порахувати ключі').item.json.source_ref }}/content",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": { "timeout": 60000 }
+      },
+      "id": "a0000000-0000-4000-8000-000000000008",
+      "name": "Вчасно — завантажити XML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, -60],
+      "credentials": { "httpHeaderAuth": { "id": "REPLACE_AFTER_IMPORT", "name": "Вчасно API (ApiKey)" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// XML українського ЕДО вже містить усі поля — модель не викликаємо.\n// confidence = 'n/a': нема чого оцінювати, дані не розпізнані, а прочитані.\nconst src = $('Розгорнути й порахувати ключі').all();\nconst out = [];\n$input.all().forEach((item, i) => {\n  const meta = src[i] ? src[i].json : {};\n  const x = item.json.parsed ?? item.json;\n  const lines = (x.lines ?? x.rows ?? []).map((l, n) => ({\n    line_no: n + 1,\n    raw_name: String(l.name ?? '').trim(),\n    raw_unit: l.unit ?? null,\n    qty: Number(l.qty ?? 0),\n    price: Number(l.price ?? 0),\n    amount: Number(l.amount ?? 0),\n    vat_amount: Number(l.vat ?? 0),\n    nomenclature_code: l.code ?? null\n  }));\n  out.push({ json: {\n    ...meta,\n    confidence: 'n/a',\n    amount_base: Number(x.total_without_vat ?? 0),\n    amount_vat: Number(x.total_vat ?? 0),\n    amount_total: Number(x.total ?? 0),\n    lines,\n    extracted: { channel: 'vchasno-xml', received_at: new Date().toISOString() }\n  }});\n});\nreturn out;"
+      },
+      "id": "a0000000-0000-4000-8000-000000000009",
+      "name": "XML → поля документа",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1220, -60]
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "value": "REPLACE_WITH_WF_03_ID", "mode": "id" },
+        "workflowInputs": { "mappingMode": "defineBelow", "value": {} },
+        "options": { "waitForSubWorkflow": true }
+      },
+      "id": "a0000000-0000-4000-8000-00000000000a",
+      "name": "Зіставлення та рішення (03)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1440, -60]
+    },
+    {
+      "parameters": {},
+      "id": "a0000000-0000-4000-8000-00000000000b",
+      "name": "Дубль — нічого не робимо",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1000, 160]
+    }
+  ],
+  "connections": {
+    "Розклад — кожні 5 хв": { "main": [[{ "node": "Клієнти з Вчасно", "type": "main", "index": 0 }]] },
+    "Клієнти з Вчасно": { "main": [[{ "node": "Вчасно — нові документи", "type": "main", "index": 0 }]] },
+    "Вчасно — нові документи": { "main": [[{ "node": "Розгорнути й порахувати ключі", "type": "main", "index": 0 }]] },
+    "Розгорнути й порахувати ключі": { "main": [[{ "node": "Дедуп за id документа", "type": "main", "index": 0 }]] },
+    "Дедуп за id документа": { "main": [[{ "node": "Документ новий?", "type": "main", "index": 0 }]] },
+    "Документ новий?": { "main": [[{ "node": "Вчасно — завантажити XML", "type": "main", "index": 0 }], [{ "node": "Дубль — нічого не робимо", "type": "main", "index": 0 }]] },
+    "Вчасно — завантажити XML": { "main": [[{ "node": "XML → поля документа", "type": "main", "index": 0 }]] },
+    "XML → поля документа": { "main": [[{ "node": "Зіставлення та рішення (03)", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateCredsSetupCompleted": false }
+}

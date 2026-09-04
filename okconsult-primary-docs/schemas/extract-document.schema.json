@@ -1,0 +1,86 @@
+{
+  "type": "object",
+  "properties": {
+    "doc_type": {
+      "type": "string",
+      "enum": ["ВН", "ПН", "Акт", "Рахунок", "ПодатковаН", "ТТН", "Інше"],
+      "description": "Тип первинного документа"
+    },
+    "doc_number": {
+      "type": ["string", "null"],
+      "description": "Номер рівно як у документі, з префіксом і слешами"
+    },
+    "doc_date": {
+      "type": ["string", "null"],
+      "description": "Дата складання, ISO YYYY-MM-DD. Українські дати — ДД.ММ.РРРР"
+    },
+    "counterparty_edrpou": {
+      "type": ["string", "null"],
+      "description": "ЄДРПОУ постачальника (8 цифр) або ІПН ФОП (10 цифр), тільки цифри"
+    },
+    "counterparty_name": {
+      "type": ["string", "null"],
+      "description": "Назва постачальника з організаційною формою"
+    },
+    "contract": {
+      "type": ["string", "null"],
+      "description": "Договір-підстава: номер і дата, якщо вказані"
+    },
+    "currency": {
+      "type": "string",
+      "enum": ["UAH", "USD", "EUR"]
+    },
+    "vat_rate": {
+      "type": ["number", "null"],
+      "description": "20, 7, 0 або null"
+    },
+    "amount_base": {
+      "type": ["number", "null"],
+      "description": "Сума без ПДВ"
+    },
+    "amount_vat": {
+      "type": ["number", "null"]
+    },
+    "amount_total": {
+      "type": ["number", "null"],
+      "description": "Усього з ПДВ"
+    },
+    "lines": {
+      "type": "array",
+      "description": "Усі рядки табличної частини по порядку",
+      "items": {
+        "type": "object",
+        "properties": {
+          "line_no": { "type": "integer" },
+          "raw_name": {
+            "type": "string",
+            "description": "Найменування ДОСЛІВНО, зі скороченнями постачальника"
+          },
+          "raw_code": { "type": ["string", "null"], "description": "Артикул постачальника, якщо є" },
+          "unit": { "type": ["string", "null"] },
+          "qty": { "type": ["number", "null"] },
+          "price": { "type": ["number", "null"] },
+          "amount": { "type": ["number", "null"] },
+          "vat_amount": { "type": ["number", "null"] }
+        },
+        "required": ["line_no", "raw_name", "raw_code", "unit", "qty", "price", "amount", "vat_amount"],
+        "additionalProperties": false
+      }
+    },
+    "ocr_quality": {
+      "type": "number",
+      "description": "Самооцінка читабельності тексту, 0..1. Занижена оцінка коштує 30 с перевірки, завищена — помилки в обліку"
+    },
+    "unreadable_fields": {
+      "type": "array",
+      "description": "Назви полів, які не вдалося прочитати впевнено",
+      "items": { "type": "string" }
+    }
+  },
+  "required": [
+    "doc_type", "doc_number", "doc_date", "counterparty_edrpou", "counterparty_name",
+    "contract", "currency", "vat_rate", "amount_base", "amount_vat", "amount_total",
+    "lines", "ocr_quality", "unreadable_fields"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,218 @@
+{
+  "name": "Первинка 04 — Проведення в BAS / 1С (OData)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Ідемпотентне створення документа в базі клієнта\n\nТри рівні захисту від дубля, бо це операція із зовнішнім ефектом:\n1. **Захоплення статусу** — UPDATE ... WHERE status='verified' RETURNING. Другий воркер отримає 0 рядків.\n2. **Перевірка в самій базі** — GET з $filter за номером, датою й контрагентом.\n3. **one_c_ref у нас** — після успіху записуємо GUID; повторний запуск завершиться як skipped_duplicate.\n\nПроведення (Posted) НЕ вмикаємо: документ лягає чернеткою. Проводить головний бухгалтер.\nЦе рівень автономії 2 — «робить усе, крім останнього кроку».",
+        "height": 300,
+        "width": 560
+      },
+      "id": "d0000000-0000-4000-8000-000000000001",
+      "name": "Чому три перевірки, а не одна",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-340, -300]
+    },
+    {
+      "parameters": { "rule": { "interval": [{ "field": "minutes", "minutesInterval": 1 }] } },
+      "id": "d0000000-0000-4000-8000-000000000002",
+      "name": "Розклад — щохвилини",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-340, 40]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select d.id, d.client_id, c.odata_base_url\nfrom documents d join clients c on c.id = d.client_id\nwhere d.status = 'verified' and c.active\norder by d.verified_at\nlimit 20;",
+        "options": {}
+      },
+      "id": "d0000000-0000-4000-8000-000000000003",
+      "name": "Перевірені документи",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [-120, 40],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": { "batchSize": 1, "options": {} },
+      "id": "d0000000-0000-4000-8000-000000000004",
+      "name": "По одному документу",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [100, 40]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Захоплення: атомарний перехід verified → posting. Гонки неможливі.\nupdate documents\nset status = 'posting', updated_at = now()\nwhere id = $1 and status = 'verified'\nreturning id, client_id, natural_key, doc_type, doc_number, doc_date, counterparty_id, amount_total;",
+        "options": { "queryReplacement": "={{ $json.id }}" }
+      },
+      "id": "d0000000-0000-4000-8000-000000000005",
+      "name": "Захопити документ",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [320, 40],
+      "alwaysOutputData": true,
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose", "version": 2 },
+          "combinator": "and",
+          "conditions": [
+            { "id": "c1", "leftValue": "={{ $json.id }}", "rightValue": "", "operator": { "type": "string", "operation": "exists", "singleValue": true } }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d0000000-0000-4000-8000-000000000006",
+      "name": "Захоплено нами?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [540, 40]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select d.*, c.odata_base_url, cp.one_c_ref as cp_ref, cp.edrpou as cp_edrpou,\n       coalesce(json_agg(json_build_object(\n         'line_no', l.line_no, 'qty', l.qty, 'price', l.price, 'amount', l.amount,\n         'vat_amount', l.vat_amount, 'nom_ref', n.one_c_ref, 'debit', l.debit_account, 'credit', l.credit_account\n       ) order by l.line_no) filter (where l.id is not null), '[]') as lines\nfrom documents d\njoin clients c on c.id = d.client_id\nleft join counterparties cp on cp.id = d.counterparty_id\nleft join document_lines l on l.document_id = d.id\nleft join nomenclature n on n.id = l.nomenclature_id\nwhere d.id = $1\ngroup by d.id, c.odata_base_url, cp.one_c_ref, cp.edrpou;",
+        "options": { "queryReplacement": "={{ $json.id }}" }
+      },
+      "id": "d0000000-0000-4000-8000-000000000007",
+      "name": "Зібрати документ і рядки",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [760, -60],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.odata_base_url }}/Document_ПоступлениеТоваровУслуг",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "$format", "value": "application/json" },
+            { "name": "$select", "value": "Ref_Key,Number,Date,Posted" },
+            { "name": "$filter", "value": "={{ \"Number eq '\" + $json.doc_number + \"' and Date eq datetime'\" + $json.doc_date + \"T00:00:00'\" }}" }
+          ]
+        },
+        "options": { "timeout": 30000 }
+      },
+      "id": "d0000000-0000-4000-8000-000000000008",
+      "name": "BAS — чи документ уже є",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, -60],
+      "credentials": { "httpBasicAuth": { "id": "REPLACE_AFTER_IMPORT", "name": "BAS OData · користувач інтеграції" } },
+      "onError": "continueErrorOutput",
+      "notes": "Стандартний OData-інтерфейс 1С/BAS публікується в конфігураторі: Адміністрування → Публікація на веб-сервері → «Публікувати стандартний інтерфейс OData». Назви об'єктів у вашій конфігурації звірити через $metadata."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose", "version": 2 },
+          "combinator": "and",
+          "conditions": [
+            { "id": "c1", "leftValue": "={{ ($json.value || []).length }}", "rightValue": 0, "operator": { "type": "number", "operation": "gt" } }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d0000000-0000-4000-8000-000000000009",
+      "name": "Уже створено?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1200, -60]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Зібрати документ і рядки').first().json.odata_base_url }}/Document_ПоступлениеТоваровУслуг?$format=application/json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify((() => { const d = $('Зібрати документ і рядки').first().json; return { Date: d.doc_date + 'T00:00:00', Number: d.doc_number, Контрагент_Key: d.cp_ref, СуммаДокумента: Number(d.amount_total), Комментарий: 'Первинка: ' + d.natural_key, Posted: false, Товары: (d.lines || []).map(l => ({ LineNumber: String(l.line_no), Номенклатура_Key: l.nom_ref, Количество: Number(l.qty), Цена: Number(l.price), Сумма: Number(l.amount), СуммаНДС: Number(l.vat_amount || 0), СчетУчетаБУ: l.debit })) }; })()) }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "d0000000-0000-4000-8000-00000000000a",
+      "name": "BAS — створити документ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1420, -160],
+      "credentials": { "httpBasicAuth": { "id": "REPLACE_AFTER_IMPORT", "name": "BAS OData · користувач інтеграції" } },
+      "onError": "continueErrorOutput",
+      "notes": "Posted: false — документ лягає чернеткою. Комментарий несе natural_key: за ним документ знаходиться в базі клієнта навіть якщо наша БД буде втрачена."
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "update documents\nset status = 'posted', posted_at = now(), one_c_ref = $2, last_error = null\nwhere id = $1;",
+        "options": { "queryReplacement": "={{ $('Захопити документ').first().json.id }},{{ $json.Ref_Key ?? ($json.value && $json.value[0] ? $json.value[0].Ref_Key : null) }}" }
+      },
+      "id": "d0000000-0000-4000-8000-00000000000b",
+      "name": "Позначити проведеним",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1640, -60],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Помилка автоматизації — це стан бізнес-об'єкта, а не тільки рядок у лозі.\n-- Документ повертається в error з ВЛАСНИКОМ, інакше він «зависає».\nupdate documents\nset status = 'error',\n    last_error = $2,\n    owner_email = coalesce(owner_email, (select email from users where role = 'chief' limit 1))\nwhere id = $1;",
+        "options": { "queryReplacement": "={{ $('Захопити документ').first().json.id }},{{ ($json.error?.message ?? JSON.stringify($json)).slice(0, 900) }}" }
+      },
+      "id": "d0000000-0000-4000-8000-00000000000c",
+      "name": "Помилка → стан документа + власник",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1420, 140],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into automation_runs (automation_key, client_id, trigger_mode, entity_type, entity_id, entity_label, status, idempotency_key, finished_at)\nvalues ('post', $1, 'schedule', 'document', $2, $3, $4, $5, now());",
+        "options": { "queryReplacement": "={{ $('Захопити документ').first().json.client_id }},{{ $('Захопити документ').first().json.id }},{{ $('Захопити документ').first().json.doc_number + ' · ' + $('Захопити документ').first().json.client_id }},{{ $json.__status ?? 'ok' }},{{ $('Захопити документ').first().json.natural_key }}" }
+      },
+      "id": "d0000000-0000-4000-8000-00000000000d",
+      "name": "Записати запуск",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1860, -60],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {},
+      "id": "d0000000-0000-4000-8000-00000000000e",
+      "name": "Уже взяв інший воркер",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [760, 200]
+    }
+  ],
+  "connections": {
+    "Розклад — щохвилини": { "main": [[{ "node": "Перевірені документи", "type": "main", "index": 0 }]] },
+    "Перевірені документи": { "main": [[{ "node": "По одному документу", "type": "main", "index": 0 }]] },
+    "По одному документу": { "main": [[], [{ "node": "Захопити документ", "type": "main", "index": 0 }]] },
+    "Захопити документ": { "main": [[{ "node": "Захоплено нами?", "type": "main", "index": 0 }]] },
+    "Захоплено нами?": { "main": [[{ "node": "Зібрати документ і рядки", "type": "main", "index": 0 }], [{ "node": "Уже взяв інший воркер", "type": "main", "index": 0 }]] },
+    "Зібрати документ і рядки": { "main": [[{ "node": "BAS — чи документ уже є", "type": "main", "index": 0 }]] },
+    "BAS — чи документ уже є": { "main": [[{ "node": "Уже створено?", "type": "main", "index": 0 }], [{ "node": "Помилка → стан документа + власник", "type": "main", "index": 0 }]] },
+    "Уже створено?": { "main": [[{ "node": "Позначити проведеним", "type": "main", "index": 0 }], [{ "node": "BAS — створити документ", "type": "main", "index": 0 }]] },
+    "BAS — створити документ": { "main": [[{ "node": "Позначити проведеним", "type": "main", "index": 0 }], [{ "node": "Помилка → стан документа + власник", "type": "main", "index": 0 }]] },
+    "Позначити проведеним": { "main": [[{ "node": "Записати запуск", "type": "main", "index": 0 }]] },
+    "Помилка → стан документа + власник": { "main": [[{ "node": "Записати запуск", "type": "main", "index": 0 }]] },
+    "Записати запуск": { "main": [[{ "node": "По одному документу", "type": "main", "index": 0 }]] },
+    "Уже взяв інший воркер": { "main": [[{ "node": "По одному документу", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateCredsSetupCompleted": false }
+}

@@ -1,0 +1,1494 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--ARTIFACT:BEGIN-->
+<title>Первинка</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;600&display=swap">
+<style>
+/* ============================================================
+   Первинка — прототип бек-офісу первинної документації
+   Палітра: канцелярське чорнило (синій зсув) + штамповий червоний.
+   Акцент AI — окремий фіолетовий, більше ніде не використовується.
+   ============================================================ */
+:root{
+  --paper:#F4F6F9;      /* холодний папір */
+  --surface:#FFFFFF;
+  --surface-2:#FBFCFD;
+  --sunken:#EDF1F5;
+  --line:#DBE2EA;       /* лінійка реєстру */
+  --line-strong:#BFCAD6;
+  --ink:#16202B;        /* чорнило */
+  --ink-2:#4A5A6B;
+  --ink-3:#78889A;
+  --accent:#1F5FA9;     /* синій офіційного бланка */
+  --accent-soft:#E7EFF9;
+  --accent-ink:#154880;
+  --ok:#1E7A4E;   --ok-soft:#E4F2EA;
+  --warn:#9A6510; --warn-soft:#FBF0DC;
+  --crit:#AE2F29; --crit-soft:#FAE7E5;
+  --ai:#63479C;   --ai-soft:#EFEAF8;   /* єдина мітка AI на весь продукт */
+  --focus:#1F5FA9;
+  --radius:5px;
+  --shadow:0 1px 2px rgba(22,32,43,.06), 0 8px 24px rgba(22,32,43,.08);
+  --sans:"IBM Plex Sans","Segoe UI",Roboto,Arial,sans-serif;
+  --mono:"IBM Plex Mono","SF Mono",Consolas,monospace;
+  --serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#11161C; --surface:#171E26; --surface-2:#1B232C; --sunken:#131A21;
+    --line:#2A343F; --line-strong:#3B4854;
+    --ink:#E7ECF2; --ink-2:#A9B6C4; --ink-3:#7D8B99;
+    --accent:#6FA8E8; --accent-soft:#1B2C3F; --accent-ink:#9CC5F2;
+    --ok:#57C08A; --ok-soft:#16301F;
+    --warn:#DFA850; --warn-soft:#332612;
+    --crit:#E58279; --crit-soft:#37201E;
+    --ai:#AB92E0; --ai-soft:#241C38;
+    --focus:#6FA8E8;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#11161C; --surface:#171E26; --surface-2:#1B232C; --sunken:#131A21;
+  --line:#2A343F; --line-strong:#3B4854;
+  --ink:#E7ECF2; --ink-2:#A9B6C4; --ink-3:#7D8B99;
+  --accent:#6FA8E8; --accent-soft:#1B2C3F; --accent-ink:#9CC5F2;
+  --ok:#57C08A; --ok-soft:#16301F;
+  --warn:#DFA850; --warn-soft:#332612;
+  --crit:#E58279; --crit-soft:#37201E;
+  --ai:#AB92E0; --ai-soft:#241C38;
+  --focus:#6FA8E8;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font:400 13.5px/1.5 var(--sans);
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus); outline-offset:2px; border-radius:3px}
+[hidden]{display:none !important}
+.num{font-family:var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.u{text-transform:uppercase; letter-spacing:.07em; font-size:10.5px; font-weight:600; color:var(--ink-3)}
+
+/* ---------- каркас ---------- */
+.app{display:grid; grid-template-columns:214px 1fr; grid-template-rows:auto 1fr; height:100vh; min-height:0}
+.topbar{
+  grid-column:1/-1; display:flex; align-items:center; gap:14px;
+  padding:0 14px; height:50px; background:var(--surface);
+  border-bottom:1px solid var(--line); position:relative; z-index:20;
+}
+.brand{display:flex; align-items:baseline; gap:8px; width:200px; flex:none}
+.brand b{font-size:15px; font-weight:700; letter-spacing:-.01em}
+.brand span{font-size:10.5px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.08em}
+.searchwrap{flex:1; max-width:460px; position:relative}
+.searchwrap input{
+  width:100%; padding:6px 10px 6px 28px; background:var(--sunken);
+  border:1px solid transparent; border-radius:var(--radius); color:var(--ink);
+}
+.searchwrap input::placeholder{color:var(--ink-3)}
+.searchwrap input:focus{background:var(--surface); border-color:var(--line-strong); outline:none}
+.searchwrap .mag{position:absolute; left:9px; top:50%; transform:translateY(-50%); color:var(--ink-3); font-size:12px}
+.searchwrap .kbd{position:absolute; right:7px; top:50%; transform:translateY(-50%)}
+.kbd{
+  font:500 10px/1.6 var(--mono); padding:1px 5px; border:1px solid var(--line-strong);
+  border-bottom-width:2px; border-radius:3px; color:var(--ink-3); background:var(--surface); white-space:nowrap;
+}
+.spacer{flex:1}
+.pick{
+  display:flex; align-items:center; gap:6px; padding:5px 9px; background:transparent;
+  border:1px solid var(--line); border-radius:var(--radius); cursor:pointer;
+}
+.pick:hover{border-color:var(--line-strong)}
+.pick small{color:var(--ink-3); font-size:11px}
+.killswitch{
+  display:flex; align-items:center; gap:7px; padding:5px 10px; cursor:pointer;
+  border:1px solid var(--crit); color:var(--crit); background:transparent; border-radius:var(--radius); font-weight:600;
+}
+.killswitch:hover{background:var(--crit-soft)}
+.killswitch.off{border-color:var(--line-strong); color:var(--ink-2)}
+
+.rail{
+  background:var(--surface); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; padding:10px 8px; gap:2px; overflow-y:auto; min-height:0;
+}
+.rail .u{padding:12px 8px 5px}
+.navitem{
+  display:flex; align-items:center; gap:9px; width:100%; padding:6px 9px; border:0;
+  background:transparent; border-radius:var(--radius); cursor:pointer; text-align:left; color:var(--ink-2);
+}
+.navitem:hover{background:var(--sunken); color:var(--ink)}
+.navitem[aria-current="page"]{background:var(--accent-soft); color:var(--accent-ink); font-weight:600}
+.navitem .ico{width:16px; text-align:center; flex:none; font-size:13px; opacity:.85}
+.navitem .cnt{margin-left:auto; font:500 11px/1 var(--mono); color:var(--ink-3)}
+.navitem .cnt.hot{color:var(--crit); font-weight:600}
+.navitem[aria-current="page"] .cnt{color:var(--accent-ink)}
+
+.main{overflow:auto; min-height:0; display:flex; flex-direction:column}
+.screen{display:none; flex-direction:column; flex:1; min-height:0}
+.screen.on{display:flex}
+
+.shead{
+  display:flex; align-items:flex-end; gap:14px; padding:14px 18px 11px;
+  border-bottom:1px solid var(--line); background:var(--surface); flex:none; flex-wrap:wrap;
+}
+.shead h1{margin:0; font-size:17px; font-weight:600; letter-spacing:-.015em}
+.shead .sub{color:var(--ink-3); font-size:12px; margin-top:2px}
+.statepick{display:flex; align-items:center; gap:6px; margin-left:auto}
+.statepick select{
+  padding:4px 7px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+}
+.body{flex:1; min-height:0; overflow:auto; padding:16px 18px 28px}
+.body.flush{padding:0; display:flex; min-height:0}
+
+/* ---------- атоми ---------- */
+.btn{
+  display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:var(--radius);
+  border:1px solid var(--line-strong); background:var(--surface); color:var(--ink);
+  cursor:pointer; font-weight:500; white-space:nowrap;
+}
+.btn:hover{background:var(--sunken)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
+.btn.primary:hover{background:var(--accent-ink); border-color:var(--accent-ink)}
+.btn.quiet{border-color:transparent; background:transparent; color:var(--accent-ink)}
+.btn.quiet:hover{background:var(--accent-soft)}
+.btn.danger{border-color:var(--crit); color:var(--crit)}
+.btn.danger:hover{background:var(--crit-soft)}
+.btn.sm{padding:3px 8px; font-size:12px}
+.btn[disabled]{opacity:.5; cursor:not-allowed}
+.btn.busy{pointer-events:none; opacity:.75}
+
+.badge{
+  display:inline-flex; align-items:center; gap:5px; padding:1.5px 7px; border-radius:20px;
+  font-size:11.5px; font-weight:500; border:1px solid transparent; white-space:nowrap;
+}
+.badge .dot{width:6px; height:6px; border-radius:50%; background:currentColor; flex:none}
+.b-ok{background:var(--ok-soft); color:var(--ok); border-color:color-mix(in srgb,var(--ok) 25%,transparent)}
+.b-warn{background:var(--warn-soft); color:var(--warn); border-color:color-mix(in srgb,var(--warn) 25%,transparent)}
+.b-crit{background:var(--crit-soft); color:var(--crit); border-color:color-mix(in srgb,var(--crit) 25%,transparent)}
+.b-info{background:var(--accent-soft); color:var(--accent-ink); border-color:color-mix(in srgb,var(--accent) 22%,transparent)}
+.b-mute{background:var(--sunken); color:var(--ink-2); border-color:var(--line)}
+
+.ai{
+  display:inline-flex; align-items:center; gap:4px; padding:0 5px; height:16px; border-radius:3px;
+  background:var(--ai-soft); color:var(--ai); border:1px solid color-mix(in srgb,var(--ai) 28%,transparent);
+  font:600 9.5px/1 var(--sans); letter-spacing:.06em; cursor:pointer; vertical-align:middle; user-select:none;
+}
+.ai:hover{filter:brightness(.95)}
+.ai::before{content:"◆"; font-size:7px}
+
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius)}
+.card .ch{padding:10px 13px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px}
+.card .ch h3{margin:0; font-size:13px; font-weight:600}
+.card .cb{padding:13px}
+.grid{display:grid; gap:12px}
+.note{
+  padding:9px 12px; border-radius:var(--radius); border:1px solid var(--line);
+  background:var(--surface-2); color:var(--ink-2); font-size:12.5px;
+}
+.note.warn{background:var(--warn-soft); border-color:color-mix(in srgb,var(--warn) 30%,transparent); color:var(--ink)}
+.note.crit{background:var(--crit-soft); border-color:color-mix(in srgb,var(--crit) 30%,transparent); color:var(--ink)}
+.note.info{background:var(--accent-soft); border-color:color-mix(in srgb,var(--accent) 25%,transparent); color:var(--ink)}
+.note b{font-weight:600}
+
+/* ---------- таблиця-реєстр ---------- */
+.tblwrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface)}
+table.tbl{border-collapse:separate; border-spacing:0; width:100%; font-size:12.5px}
+table.tbl th{
+  position:sticky; top:0; z-index:2; background:var(--surface-2); text-align:left;
+  padding:7px 10px; border-bottom:1px solid var(--line-strong); font-weight:600; font-size:11px;
+  text-transform:uppercase; letter-spacing:.05em; color:var(--ink-3); white-space:nowrap;
+}
+table.tbl th.r,table.tbl td.r{text-align:right}
+table.tbl td{padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:middle}
+table.tbl tbody tr:hover td{background:var(--surface-2)}
+table.tbl tbody tr[aria-selected="true"] td{background:var(--accent-soft)}
+table.tbl tbody tr:last-child td{border-bottom:0}
+table.tbl .idc{font-family:var(--mono); font-weight:500; white-space:nowrap}
+table.tbl.dense td{padding:4px 10px}
+.trunc{max-width:230px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block}
+
+.toolbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:11px}
+.views{display:flex; gap:4px; flex-wrap:wrap}
+.view{
+  padding:4px 10px; border:1px solid var(--line); background:var(--surface);
+  border-radius:20px; cursor:pointer; font-size:12px; color:var(--ink-2);
+}
+.view:hover{border-color:var(--line-strong)}
+.view[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--paper); font-weight:600}
+.chips{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+.chip{
+  display:inline-flex; align-items:center; gap:6px; padding:2.5px 6px 2.5px 9px;
+  border:1px solid var(--line-strong); border-radius:20px; background:var(--surface); font-size:12px;
+}
+.chip button{border:0; background:transparent; cursor:pointer; color:var(--ink-3); padding:0 2px; line-height:1}
+.chip button:hover{color:var(--crit)}
+.count{color:var(--ink-3); font-size:12px; margin-left:auto}
+
+.bulkbar{
+  display:flex; align-items:center; gap:9px; padding:8px 12px; margin-bottom:11px;
+  background:var(--ink); color:var(--paper); border-radius:var(--radius); flex-wrap:wrap;
+}
+.bulkbar .btn{background:transparent; border-color:rgba(255,255,255,.35); color:var(--paper)}
+.bulkbar .btn:hover{background:rgba(255,255,255,.12)}
+.bulkbar b{font-weight:600}
+
+/* ---------- майстер-деталь ---------- */
+.split{display:grid; grid-template-columns:minmax(330px,410px) 1fr; flex:1; min-height:0}
+.split>.left{border-right:1px solid var(--line); overflow-y:auto; background:var(--surface); min-height:0}
+.split>.right{overflow-y:auto; min-height:0; background:var(--paper)}
+.seg{display:flex; gap:2px; padding:9px 11px; border-bottom:1px solid var(--line); flex-wrap:wrap; position:sticky; top:0; background:var(--surface); z-index:3}
+.segbtn{
+  padding:4px 9px; border:0; background:transparent; border-radius:var(--radius);
+  cursor:pointer; font-size:12px; color:var(--ink-2); display:flex; gap:6px; align-items:center;
+}
+.segbtn:hover{background:var(--sunken)}
+.segbtn[aria-pressed="true"]{background:var(--sunken); color:var(--ink); font-weight:600}
+.segbtn i{font-style:normal; font-family:var(--mono); font-size:11px; color:var(--ink-3)}
+.segbtn.alarm i{color:var(--crit); font-weight:600}
+
+.qrow{
+  display:flex; flex-direction:column; align-items:stretch; width:100%; text-align:left; border:0; border-bottom:1px solid var(--line);
+  background:transparent; padding:10px 12px; cursor:pointer; border-left:3px solid transparent;
+}
+.qrow:hover{background:var(--surface-2)}
+.qrow[aria-selected="true"]{background:var(--accent-soft); border-left-color:var(--accent)}
+.qrow .l1{display:flex; align-items:baseline; gap:8px}
+.qrow .l1 .doc{font-family:var(--mono); font-weight:500; font-size:12.5px}
+.qrow .l1 .sum{margin-left:auto; font-family:var(--mono); font-variant-numeric:tabular-nums; font-weight:600}
+.qrow .l2{color:var(--ink-2); font-size:12px; margin-top:2px; display:flex; gap:7px; align-items:center}
+.qrow .l3{margin-top:6px; display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+.qrow .age{color:var(--ink-3); font-size:11px; font-family:var(--mono)}
+.qrow .age.late{color:var(--crit); font-weight:600}
+
+/* ---------- факсиміле документа ---------- */
+.verify{display:grid; grid-template-columns:minmax(300px,44%) 1fr; flex:1; min-height:0}
+.vleft{border-right:1px solid var(--line); background:var(--sunken); overflow:auto; padding:14px; min-height:0}
+.vright{overflow:auto; min-height:0; padding:14px 16px 0}
+.scan{
+  background:#fff; color:#1a1a1a; font-family:var(--serif); font-size:11.5px; line-height:1.45;
+  padding:20px 22px; box-shadow:var(--shadow); border:1px solid var(--line); max-width:560px; margin:0 auto;
+}
+.scan h4{margin:0 0 3px; font-size:14px; text-align:center; font-weight:600}
+.scan .meta{text-align:center; font-size:10.5px; color:#555; margin-bottom:11px}
+.scan .party{margin:7px 0; font-size:11px}
+.scan table{width:100%; border-collapse:collapse; margin:9px 0; font-size:10.5px}
+.scan th,.scan td{border:1px solid #999; padding:3px 4px; text-align:left}
+.scan th{background:#eee; font-weight:600; font-size:9.5px}
+.scan td.r,.scan th.r{text-align:right; font-family:var(--mono)}
+.scan .tot{text-align:right; margin-top:7px; font-size:11px}
+.scan .sig{display:flex; justify-content:space-between; margin-top:16px; font-size:10px; color:#555}
+.scan mark{background:#FFF0A8; padding:0 1px; border-radius:2px}
+.scan .hl{background:#CFE4FA; outline:1.5px solid #1F5FA9; border-radius:2px}
+.scanbar{display:flex; gap:6px; align-items:center; margin-bottom:10px; flex-wrap:wrap}
+
+.fields{display:flex; flex-direction:column; gap:14px}
+.fgroup{border:1px solid var(--line); border-radius:var(--radius); background:var(--surface)}
+.fgroup>header{padding:8px 12px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px}
+.fgroup>header h3{margin:0; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-3)}
+.frow{display:grid; grid-template-columns:150px 1fr; gap:10px; padding:6px 12px; align-items:baseline}
+.frow+.frow{border-top:1px solid var(--line)}
+.frow>dt{color:var(--ink-2); font-size:12px}
+.frow>dd{margin:0; display:flex; align-items:center; gap:7px; flex-wrap:wrap}
+.fval{
+  border:1px solid transparent; border-radius:3px; padding:1px 5px; margin:-1px -5px; cursor:text;
+  background:transparent;
+}
+.fval:hover{border-color:var(--line-strong); background:var(--surface-2)}
+.fval:focus{border-color:var(--accent); background:var(--surface); outline:none}
+dl{margin:0}
+
+.lines{width:100%; border-collapse:separate; border-spacing:0; font-size:12px}
+.lines th{background:var(--surface-2); padding:6px 8px; text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-3); border-bottom:1px solid var(--line-strong); font-weight:600}
+.lines td{padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top}
+.lines tr.need td{background:var(--warn-soft)}
+.lines tr.need td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+.lines .r{text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums; white-space:nowrap}
+.lines select{max-width:100%; padding:2px 5px; border:1px solid var(--line-strong); border-radius:3px; background:var(--surface); font-size:12px}
+.raw{color:var(--ink-3); font-size:11px; display:block; margin-top:2px}
+.acct{font-family:var(--mono); font-size:11.5px; color:var(--accent-ink); background:var(--accent-soft); padding:0 4px; border-radius:3px}
+
+.actionbar{
+  position:sticky; bottom:0; margin:14px -16px 0; padding:11px 16px;
+  background:var(--surface); border-top:1px solid var(--line-strong);
+  display:flex; gap:9px; align-items:center; flex-wrap:wrap; box-shadow:0 -3px 12px rgba(22,32,43,.05);
+}
+.actionbar .gapme{flex:1}
+
+/* ---------- канбан ---------- */
+.board{display:flex; gap:11px; align-items:flex-start; overflow-x:auto; padding-bottom:8px}
+.col{flex:0 0 258px; background:var(--sunken); border:1px solid var(--line); border-radius:var(--radius); display:flex; flex-direction:column}
+.col>header{padding:9px 11px; border-bottom:1px solid var(--line)}
+.col>header .t{display:flex; align-items:center; gap:7px; font-weight:600; font-size:12.5px}
+.col>header .s{color:var(--ink-3); font-size:11px; margin-top:2px; font-family:var(--mono)}
+.col .stack{padding:8px; display:flex; flex-direction:column; gap:7px; min-height:56px}
+.kcard{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:9px 10px; cursor:grab}
+.kcard:hover{border-color:var(--line-strong)}
+.kcard .kt{font-family:var(--mono); font-size:11.5px; font-weight:500}
+.kcard .kn{font-size:12px; margin-top:2px}
+.kcard .kf{display:flex; align-items:center; gap:6px; margin-top:7px; flex-wrap:wrap}
+.kcard .sum{margin-left:auto; font-family:var(--mono); font-variant-numeric:tabular-nums; font-weight:600; font-size:12px}
+.kcard.stale{border-left:3px solid var(--crit)}
+.emptycol{color:var(--ink-3); font-size:12px; padding:10px; text-align:center}
+
+/* ---------- панель ---------- */
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:11px}
+.kpi{display:flex; flex-direction:column; align-items:flex-start; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:12px 13px; cursor:pointer; text-align:left; width:100%}
+.kpi:hover{border-color:var(--line-strong)}
+.kpi .k{color:var(--ink-3); font-size:11.5px}
+.kpi .v{font:600 25px/1.15 var(--mono); font-variant-numeric:tabular-nums; margin:5px 0 3px; letter-spacing:-.02em}
+.kpi .d{font-size:11.5px; display:flex; align-items:center; gap:5px}
+.spark{display:flex; align-items:flex-end; gap:3px; height:54px; margin-top:9px}
+.spark i{flex:1; background:var(--accent); opacity:.32; border-radius:1px 1px 0 0; min-height:2px}
+.spark i.hi{opacity:.9}
+
+/* ---------- історія запусків ---------- */
+.steps{display:flex; flex-direction:column; gap:0; font-size:12px}
+.step{display:grid; grid-template-columns:22px 1fr auto; gap:9px; padding:7px 0; border-bottom:1px dashed var(--line); align-items:baseline}
+.step:last-child{border-bottom:0}
+.step .n{font-family:var(--mono); color:var(--ink-3); font-size:11px}
+.step .io{color:var(--ink-3); font-family:var(--mono); font-size:11px; margin-top:3px; word-break:break-all}
+.step.fail{color:var(--crit)}
+.autorow{display:grid; grid-template-columns:1fr auto auto auto; gap:11px; align-items:center; padding:10px 12px; border-bottom:1px solid var(--line)}
+.autorow:last-child{border-bottom:0}
+.autorow .an{display:block; font-weight:600; font-size:12.5px}
+.autorow .ad{display:block; color:var(--ink-2); font-size:12px; margin-top:2px}
+.lvl{display:flex; border:1px solid var(--line-strong); border-radius:var(--radius); overflow:hidden}
+.lvl button{border:0; background:var(--surface); padding:3px 8px; cursor:pointer; font-size:11.5px; color:var(--ink-2); border-right:1px solid var(--line)}
+.lvl button:last-child{border-right:0}
+.lvl button[aria-pressed="true"]{background:var(--accent); color:#fff; font-weight:600}
+.sw{width:34px; height:19px; border-radius:20px; border:1px solid var(--line-strong); background:var(--sunken); position:relative; cursor:pointer; padding:0}
+.sw::after{content:""; position:absolute; top:2px; left:2px; width:13px; height:13px; border-radius:50%; background:var(--ink-3); transition:.15s}
+.sw[aria-checked="true"]{background:var(--ok-soft); border-color:var(--ok)}
+.sw[aria-checked="true"]::after{left:17px; background:var(--ok)}
+
+/* ---------- стани ---------- */
+.state{padding:36px 18px; display:flex; flex-direction:column; align-items:center; gap:9px; text-align:center; color:var(--ink-2)}
+.state h3{margin:0; font-size:15px; color:var(--ink); font-weight:600}
+.state p{margin:0; max-width:44ch; font-size:12.5px}
+.sk{background:linear-gradient(90deg,var(--sunken) 25%,var(--line) 50%,var(--sunken) 75%); background-size:200% 100%; animation:sh 1.3s infinite; border-radius:3px}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sklist{display:flex; flex-direction:column; gap:9px; padding:14px 0}
+.sklist .sk{height:38px}
+
+/* ---------- тост, поповер, демо ---------- */
+.toasts{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:60; max-width:390px}
+.toast{
+  background:var(--ink); color:var(--paper); padding:10px 13px; border-radius:var(--radius);
+  box-shadow:var(--shadow); display:flex; gap:11px; align-items:center; font-size:12.5px;
+  animation:tin .18s ease-out;
+}
+@keyframes tin{from{transform:translateY(8px); opacity:0}to{transform:none; opacity:1}}
+.toast button{background:transparent; border:0; color:var(--paper); text-decoration:underline; cursor:pointer; font-weight:600; white-space:nowrap}
+.pop{
+  position:fixed; z-index:70; max-width:330px; background:var(--surface); border:1px solid var(--line-strong);
+  border-radius:var(--radius); box-shadow:var(--shadow); padding:12px 13px; font-size:12.5px;
+}
+.pop h4{margin:0 0 6px; font-size:12.5px; display:flex; align-items:center; gap:6px}
+.pop dl{display:grid; grid-template-columns:auto 1fr; gap:3px 9px; margin:7px 0 0}
+.pop dt{color:var(--ink-3); font-size:11.5px}
+.pop dd{margin:0; font-size:11.5px}
+.pop .close{position:absolute; top:6px; right:8px; border:0; background:transparent; cursor:pointer; color:var(--ink-3); font-size:14px}
+.backdrop{position:fixed; inset:0; background:rgba(22,32,43,.42); z-index:65; display:flex; align-items:center; justify-content:center; padding:18px}
+.modal{background:var(--surface); border:1px solid var(--line-strong); border-radius:var(--radius); box-shadow:var(--shadow); max-width:520px; width:100%; max-height:86vh; overflow:auto}
+.modal header{padding:13px 15px; border-bottom:1px solid var(--line)}
+.modal header h3{margin:0; font-size:14px}
+.modal .mb{padding:15px}
+.modal footer{padding:11px 15px; border-top:1px solid var(--line); display:flex; gap:9px; align-items:center; flex-wrap:wrap}
+.demobar{
+  position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:58;
+  background:var(--ink); color:var(--paper); padding:9px 15px; border-radius:22px;
+  box-shadow:var(--shadow); display:flex; gap:11px; align-items:center; font-size:12.5px; max-width:min(92vw,660px);
+}
+.demobar button{background:transparent; border:1px solid rgba(255,255,255,.4); color:var(--paper); border-radius:14px; padding:2px 10px; cursor:pointer; font-size:11.5px}
+.demobar .step-n{font-family:var(--mono); opacity:.7; font-size:11px; white-space:nowrap}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important}}
+@media (max-width:900px){
+  .app{grid-template-columns:56px 1fr}
+  .rail .lbl,.rail .u{display:none}
+  .navitem{justify-content:center; padding:8px 4px}
+  .navitem .cnt{display:none}
+  .split,.verify{grid-template-columns:1fr}
+  .split>.left{max-height:44vh; border-right:0; border-bottom:1px solid var(--line)}
+  .vleft{max-height:40vh; border-right:0; border-bottom:1px solid var(--line)}
+}
+</style>
+<!--ARTIFACT:SPLIT-->
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><b>Первинка</b><span>ОК Консалтинг</span></div>
+    <div class="searchwrap">
+      <span class="mag" aria-hidden="true">⌕</span>
+      <input id="gsearch" type="search" placeholder="Номер документа, ЄДРПОУ, сума, контрагент…" aria-label="Глобальний пошук">
+      <span class="kbd" aria-hidden="true">Ctrl K</span>
+    </div>
+    <button class="pick" id="clientpick" aria-haspopup="listbox"><small>Клієнт</small> <b id="clientname">Усі клієнти</b> <span aria-hidden="true">▾</span></button>
+    <button class="pick" id="rolepick" aria-haspopup="listbox"><small>Роль</small> <b id="rolename">Оператор</b> <span aria-hidden="true">▾</span></button>
+    <div class="spacer"></div>
+    <button class="killswitch" id="kill" aria-pressed="false">■ Зупинити автоматику</button>
+  </header>
+
+  <nav class="rail" aria-label="Розділи">
+    <div class="u">Робота дня</div>
+    <button class="navitem" data-go="queue"><span class="ico" aria-hidden="true">▤</span><span class="lbl">Черга на перевірку</span><span class="cnt hot" id="nav-queue">23</span></button>
+    <button class="navitem" data-go="bank"><span class="ico" aria-hidden="true">₴</span><span class="lbl">Банківська виписка</span><span class="cnt" id="nav-bank">7</span></button>
+    <div class="u">Реєстри</div>
+    <button class="navitem" data-go="registry"><span class="ico" aria-hidden="true">☰</span><span class="lbl">Реєстр документів</span><span class="cnt">1842</span></button>
+    <button class="navitem" data-go="originals"><span class="ico" aria-hidden="true">✎</span><span class="lbl">Оригінали</span><span class="cnt hot" id="nav-orig">31</span></button>
+    <button class="navitem" data-go="acts"><span class="ico" aria-hidden="true">⇄</span><span class="lbl">Акти звірок</span><span class="cnt">12</span></button>
+    <div class="u">Контроль</div>
+    <button class="navitem" data-go="automation"><span class="ico" aria-hidden="true">⚙</span><span class="lbl">Автоматизації</span><span class="cnt hot" id="nav-auto">3</span></button>
+    <button class="navitem" data-go="dashboard"><span class="ico" aria-hidden="true">▦</span><span class="lbl">Панель</span></button>
+    <div style="flex:1"></div>
+    <button class="navitem" id="demobtn"><span class="ico" aria-hidden="true">▶</span><span class="lbl">Демо-прогін</span></button>
+    <button class="navitem" id="themebtn"><span class="ico" aria-hidden="true">◐</span><span class="lbl">Тема</span></button>
+  </nav>
+
+  <main class="main" id="main"></main>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="popholder"></div>
+<div id="modalholder"></div>
+<div id="demoholder"></div>
+<script>
+/* =============================================================
+   Первинка — кликабельний прототип. Дані вигадані, але
+   правдоподібні: номенклатура, контрагенти, суми, рахунки обліку.
+   Нічого не надсилається назовні; усе живе в пам'яті вкладки.
+   ============================================================= */
+"use strict";
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = n => n.toLocaleString("uk-UA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\s\u00A0\u202F]/g, "\u00A0");
+
+
+/* ---------------------------------------------------------- дані */
+const CLIENTS = [
+  { id: "lina", name: "ТОВ «Лінія Смаку»", edrpou: "42318765", base: "BAS Бухгалтерія · lina" },
+  { id: "medtech", name: "ТОВ «Медтехніка Плюс»", edrpou: "39887412", base: "BAS Бухгалтерія · medtech" },
+  { id: "budal", name: "ТОВ «Буд-Альянс»", edrpou: "41205338", base: "1С 8.3 · budal" },
+  { id: "fop", name: "ФОП Коваленко О. П.", edrpou: "3021706855", base: "BAS Бухгалтерія · fop" }
+];
+
+const QUEUE = [
+  {
+    id: "d1", seg: "late", doc: "ВН № РН-0004821", type: "Видаткова накладна", date: "26.08.2026",
+    party: "ТОВ «Метро Кеш енд Кері Україна»", edrpou: "32294926", client: "lina",
+    sum: 47812.40, src: "Пошта · PDF-скан", ai: true, age: "1 д 4 год", late: true,
+    reason: "2 позиції не зіставлені з номенклатурою", rlevel: "warn", conf: "середня", lines: 18, owner: "Ірина Ш."
+  },
+  {
+    id: "d2", seg: "late", doc: "ВН № 2209/1", type: "Видаткова накладна", date: "27.08.2026",
+    party: "ТОВ «Епіцентр К»", edrpou: "32490244", client: "budal",
+    sum: 12840.00, src: "Вчасно · XML", ai: false, age: "22 год", late: true,
+    reason: "Арифметика не сходиться: сума рядків ≠ сума без ПДВ", rlevel: "crit", conf: "—", lines: 9, owner: "Ірина Ш."
+  },
+  {
+    id: "d3", seg: "late", doc: "Акт № 44", type: "Акт наданих послуг", date: "27.08.2026",
+    party: "ФОП Гриценко І. В.", edrpou: "2894510877", client: "medtech",
+    sum: 8600.00, src: "Пошта · PDF", ai: true, age: "19 год", late: true,
+    reason: "Контрагента немає в довіднику — потрібне створення", rlevel: "warn", conf: "висока", lines: 1, owner: "Ірина Ш."
+  },
+  {
+    id: "d4", seg: "late", doc: "ПН № 77", type: "Податкова накладна", date: "25.08.2026",
+    party: "ТОВ «ВОГ Рітейл»", edrpou: "40201856", client: "lina",
+    sum: 21600.00, src: "M.E.Doc · XML", ai: false, age: "2 д 1 год", late: true,
+    reason: "ПДВ у ПН 3 600,00 ≠ ПДВ у видатковій 3 240,00", rlevel: "crit", conf: "—", lines: 4, owner: "Богдан К."
+  },
+  {
+    id: "d5", seg: "today", doc: "Рахунок № СФ-8842", type: "Рахунок-фактура", date: "28.08.2026",
+    party: "ТОВ «Нова Пошта»", edrpou: "31316718", client: "lina",
+    sum: 7440.00, src: "Пошта · PDF", ai: true, age: "3 год", late: false,
+    reason: "Схоже на дубль: документ з таким номером і датою вже є", rlevel: "warn", conf: "висока", lines: 2, owner: "Ірина Ш."
+  },
+  {
+    id: "d6", seg: "today", doc: "ВН № РН-991", type: "Видаткова накладна", date: "28.08.2026",
+    party: "ТОВ «Ашан Україна Гіпермаркет»", edrpou: "35442481", client: "lina",
+    sum: 0, src: "Пошта · фото", ai: true, age: "2 год", late: false,
+    reason: "Погана якість скану — 3 поля не розпізнано", rlevel: "crit", conf: "низька", lines: 0, owner: "Ірина Ш."
+  },
+  {
+    id: "d7", seg: "today", doc: "Акт № 1187", type: "Акт наданих послуг", date: "28.08.2026",
+    party: "ПрАТ «Київстар»", edrpou: "21673832", client: "medtech",
+    sum: 4320.00, src: "Вчасно · XML", ai: false, age: "1 год", late: false,
+    reason: "Рахунок обліку не визначено правилом", rlevel: "warn", conf: "—", lines: 3, owner: "Богдан К."
+  },
+  {
+    id: "d8", seg: "snoozed", doc: "ВН № 5510", type: "Видаткова накладна", date: "21.08.2026",
+    party: "ТОВ «Логістик Плюс»", edrpou: "44112907", client: "budal",
+    sum: 96300.00, src: "Пошта · PDF", ai: true, age: "відкладено до 01.09, 09:00", late: false,
+    reason: "Чекаємо уточнення від клієнта щодо договору", rlevel: "mute", conf: "середня", lines: 12, owner: "Ірина Ш."
+  }
+];
+
+/* Документ, що відкривається на екрані перевірки */
+const DOC = {
+  id: "d1", number: "РН-0004821", date: "26.08.2026", type: "Видаткова накладна",
+  supplier: "ТОВ «Метро Кеш енд Кері Україна»", supplierEdrpou: "32294926",
+  buyer: "ТОВ «Лінія Смаку»", buyerEdrpou: "42318765",
+  contract: "Договір поставки № 114/25 від 04.02.2025",
+  base: 39843.67, vat: 7968.73, total: 47812.40, vatRate: "20 %",
+  incoming: "26.08.2026 07:41 · docs@ok-consult.ua",
+  lines: [
+    { n: 1, raw: "Борошно пшеничне в/г 25кг \"Київмлин\"", qty: 40, unit: "меш", price: 412.50, amount: 16500.00, match: "Борошно пшеничне в/г, 25 кг", method: "код", conf: "точний", acct: "281" },
+    { n: 2, raw: "Цукор білий кристал. 50кг", qty: 20, unit: "меш", price: 1041.67, amount: 20833.40, match: "Цукор білий кристалічний, 50 кг", method: "історія", conf: "точний", acct: "281" },
+    { n: 3, raw: "Пакув. плівка ПВХ 45см х 300м", qty: 12, unit: "рул", price: 187.50, amount: 2250.00, match: null, method: "llm", conf: "середня", acct: "209", cand: ["Плівка пакувальна ПВХ 450 мм × 300 м", "Плівка харчова ПВХ 300 мм × 300 м", "Стрейч-плівка 500 мм × 250 м"] },
+    { n: 4, raw: "Послуги дост. до складу", qty: 1, unit: "посл", price: 260.27, amount: 260.27, match: null, method: "llm", conf: "низька", acct: "93", cand: ["Транспортні послуги (доставка)", "Послуги зберігання", "Експедирування"] }
+  ]
+};
+
+const REGISTRY = [
+  { doc: "РН-0004821", client: "lina", party: "Метро Кеш енд Кері", date: "26.08.2026", sum: 47812.40, status: "review", orig: "await", bas: "—", src: "Пошта" },
+  { doc: "2209/1", client: "budal", party: "Епіцентр К", date: "27.08.2026", sum: 12840.00, status: "error", orig: "edo", bas: "—", src: "Вчасно" },
+  { doc: "СФ-8842", client: "lina", party: "Нова Пошта", date: "28.08.2026", sum: 7440.00, status: "review", orig: "none", bas: "—", src: "Пошта" },
+  { doc: "1187", client: "medtech", party: "Київстар", date: "28.08.2026", sum: 4320.00, status: "review", orig: "edo", bas: "—", src: "Вчасно" },
+  { doc: "РН-0004790", client: "lina", party: "Метро Кеш енд Кері", date: "22.08.2026", sum: 38104.90, status: "posted", orig: "got", bas: "1a4f", src: "Пошта" },
+  { doc: "2208/4", client: "budal", party: "Епіцентр К", date: "21.08.2026", sum: 9310.00, status: "posted", orig: "edo", bas: "77c1", src: "Вчасно" },
+  { doc: "ОП-3391", client: "medtech", party: "Оптіма-Фарм", date: "20.08.2026", sum: 154900.00, status: "posted", orig: "await", bas: "b02e", src: "Вчасно" },
+  { doc: "1102", client: "fop", party: "Укрпошта", date: "19.08.2026", sum: 1284.00, status: "posted", orig: "got", bas: "44a9", src: "Пошта" },
+  { doc: "РН-0004702", client: "lina", party: "Ашан Україна", date: "18.08.2026", sum: 22415.30, status: "posted", orig: "await", bas: "9d31", src: "Пошта" },
+  { doc: "77", client: "lina", party: "ВОГ Рітейл", date: "25.08.2026", sum: 21600.00, status: "error", orig: "edo", bas: "—", src: "M.E.Doc" },
+  { doc: "5510", client: "budal", party: "Логістик Плюс", date: "21.08.2026", sum: 96300.00, status: "snoozed", orig: "await", bas: "—", src: "Пошта" },
+  { doc: "44", client: "medtech", party: "ФОП Гриценко І. В.", date: "27.08.2026", sum: 8600.00, status: "review", orig: "await", bas: "—", src: "Пошта" }
+];
+
+const STATUS_MAP = {
+  review: ["b-warn", "Чекає перевірки"], posted: ["b-ok", "Проведено в BAS"],
+  error: ["b-crit", "Помилка"], snoozed: ["b-mute", "Відкладено"], draft: ["b-info", "Чернетка, не проведено"]
+};
+const ORIG_MAP = {
+  await: ["b-warn", "Чекаємо"], got: ["b-ok", "Отримано"],
+  edo: ["b-info", "Підписано в Вчасно"], none: ["b-mute", "Не потрібен"]
+};
+
+const ORIGINALS = [
+  { stage: 0, title: "Підписано в Вчасно", hint: "Паперовий оригінал не потрібен", stale: null, cards: [
+    { doc: "2209/1", party: "ТОВ «Епіцентр К»", sum: 12840.00, days: 4, next: "—" },
+    { doc: "1187", party: "ПрАТ «Київстар»", sum: 4320.00, days: 3, next: "—" }
+  ]},
+  { stage: 1, title: "Очікуємо оригінал", hint: "Поріг: 14 днів", stale: 14, cards: [
+    { doc: "РН-0004821", party: "ТОВ «Метро Кеш енд Кері»", sum: 47812.40, days: 5, next: "Нагадування 02.09" },
+    { doc: "ОП-3391", party: "ТОВ «Оптіма-Фарм»", sum: 154900.00, days: 11, next: "Нагадування 01.09" },
+    { doc: "5510", party: "ТОВ «Логістик Плюс»", sum: 96300.00, days: 10, next: "Уточнити договір" }
+  ]},
+  { stage: 2, title: "Нагадування надіслано", hint: "Поріг: 10 днів після листа", stale: 10, cards: [
+    { doc: "РН-0004702", party: "ТОВ «Ашан Україна»", sum: 22415.30, days: 13, next: "Друге нагадування", stale: true },
+    { doc: "8801", party: "ТОВ «Фрешлайн»", sum: 6720.00, days: 6, next: "Чекаємо відповідь" }
+  ]},
+  { stage: 3, title: "Отримано, не підшито", hint: "Поріг: 5 днів", stale: 5, cards: [
+    { doc: "1102", party: "АТ «Укрпошта»", sum: 1284.00, days: 2, next: "Підшити в папку 08/2026" }
+  ]},
+  { stage: 4, title: "Підшито", hint: "Папка 08/2026", stale: null, cards: [] }
+];
+
+const BANK = {
+  account: "UA83 3052 9900 0002 6007 0123 4567", bankName: "ПриватБанк", client: "lina",
+  day: "28.08.2026", imported: "29.08.2026, 06:05", auto: 38, manual: 5, unknown: 2,
+  tx: [
+    { id: "t1", time: "09:14", dir: "out", sum: 47812.40, party: "ТОВ «Метро Кеш енд Кері Україна»", edrpou: "32294926",
+      purpose: "Оплата згідно рах. № СФ-4821 від 26.08.2026, у т.ч. ПДВ 20% 7 968,73 грн", state: "auto",
+      match: "Рахунок № СФ-4821 · ТОВ «Метро Кеш енд Кері»", how: "Номер рахунку в призначенні + сума + ЄДРПОУ", acct: "631" },
+    { id: "t2", time: "10:02", dir: "in", sum: 18400.00, party: "ТОВ «Смачна Мить»", edrpou: "43119025",
+      purpose: "Оплата за товар згідно договору", state: "manual",
+      cands: [
+        { t: "Рахунок № 1204 від 14.08.2026 — 18 400,00 ₴", why: "Сума збігається точно, контрагент той самий", conf: "висока" },
+        { t: "Рахунок № 1198 від 07.08.2026 — 18 400,00 ₴", why: "Сума збігається, але рахунок уже закритий оплатою 12.08", conf: "низька" }
+      ], acct: "361" },
+    { id: "t3", time: "11:37", dir: "out", sum: 25000.00, party: "ТОВ «Оптіма-Фарм»", edrpou: "31112044",
+      purpose: "Часткова оплата за накладними ОП-3391, ОП-3402", state: "manual",
+      split: [{ t: "ОП-3391 — залишок 18 900,00", v: 18900 }, { t: "ОП-3402 — залишок 6 100,00", v: 6100 }], acct: "631" },
+    { id: "t4", time: "13:20", dir: "out", sum: 3600.00, party: "ГУ ДПС у м. Києві", edrpou: "43141377",
+      purpose: "ПДВ за липень 2026, код платежу 101", state: "auto",
+      match: "Податкове зобов'язання ПДВ · 07/2026", how: "Правило: одержувач ДПС + код платежу", acct: "6412" },
+    { id: "t5", time: "15:48", dir: "in", sum: 940.00, party: "Приватна особа", edrpou: "—",
+      purpose: "Повернення коштів", state: "unknown", acct: "—" }
+  ]
+};
+
+const ACTS = [
+  { party: "ТОВ «Епіцентр К»", edrpou: "32490244", client: "budal", period: "01.07 — 31.08.2026", our: 42180.00, their: 38700.00, diff: 3480.00, status: "diff" },
+  { party: "ТОВ «Метро Кеш енд Кері»", edrpou: "32294926", client: "lina", period: "01.07 — 31.08.2026", our: 86104.80, their: 86104.80, diff: 0, status: "signed" },
+  { party: "ПрАТ «Київстар»", edrpou: "21673832", client: "medtech", period: "01.07 — 31.08.2026", our: 12960.00, their: 12960.00, diff: 0, status: "sent" },
+  { party: "ТОВ «Оптіма-Фарм»", edrpou: "31112044", client: "medtech", period: "01.07 — 31.08.2026", our: 214300.00, their: 0, diff: 214300.00, status: "draft" }
+];
+const ACT_STATUS = { draft: ["b-mute", "Сформовано, не надіслано"], sent: ["b-info", "Надіслано у Вчасно"], signed: ["b-ok", "Підписано обома"], diff: ["b-crit", "Розбіжність"] };
+const ACT_DIFF = [
+  { side: "us", txt: "ВН № 2209/1 від 27.08.2026 — 12 840,00 ₴", note: "Є у нас, немає в акті контрагента" },
+  { side: "them", txt: "Акт № 118 від 12.08.2026 — 3 480,00 ₴", note: "Є в акті контрагента, немає у нас" },
+  { side: "them", txt: "ВН № 2208/4 від 21.08.2026 — 9 310,00 ₴", note: "Сума збігається, дата в контрагента 22.08 — розбіжність періоду" }
+];
+
+const AUTOS = [
+  { key: "vchasno", name: "Приймання документів з Вчасно", desc: "Кожні 5 хв забирає нові документи, зіставляє контрагента за ЄДРПОУ й номенклатуру за кодом. XML → поля без розпізнавання.", lvl: 3, on: true, last: "31.08.2026, 09:12", limit: "не більше 500 док./год" },
+  { key: "email", name: "Розпізнавання документів з пошти", desc: "Читає docs@ok-consult.ua, чистить цитати й підписи, витягує поля з PDF і сканів, кладе в чергу на перевірку.", lvl: 2, on: true, last: "31.08.2026, 09:08", limit: "вкладення до 20 МБ" },
+  { key: "post", name: "Проведення в BAS / 1С", desc: "Створює «Надходження товарів та послуг» у базі клієнта. Перевірений документ проводиться після підтвердження оператора.", lvl: 2, on: true, last: "31.08.2026, 08:54", limit: "без проведення понад 100 000 ₴" },
+  { key: "bank", name: "Рознесення банківської виписки", desc: "Забирає виписку з Приват24 для бізнесу, розбирає призначення платежу, зіставляє з рахунками й накладними.", lvl: 2, on: true, last: "31.08.2026, 06:05", limit: "—" },
+  { key: "orig", name: "Нагадування про оригінали", desc: "Готує лист постачальнику, якщо оригінал не надійшов у строк. Надсилає людина.", lvl: 1, on: true, last: "30.08.2026, 17:00", limit: "не більше 1 листа на контрагента на тиждень" },
+  { key: "acts", name: "Акти звірок", desc: "Наприкінці періоду тягне обороти з BAS, формує акт, показує розбіжності по документах.", lvl: 1, on: false, last: "за 24 години запусків не було", silent: true, limit: "—" }
+];
+
+const RUNS = [
+  { t: "31.08 09:12:04", a: "Приймання документів з Вчасно", mode: "Розклад", st: "ok", ent: "12 документів · ТОВ «Лінія Смаку»", dur: "4,1 с" },
+  { t: "31.08 09:08:31", a: "Розпізнавання документів з пошти", mode: "Вебхук", st: "ok", ent: "РН-0004821 · ТОВ «Лінія Смаку»", dur: "11,6 с" },
+  { t: "31.08 08:54:12", a: "Проведення в BAS / 1С", mode: "Вручну", st: "fail", ent: "2209/1 · ТОВ «Буд-Альянс»", dur: "31,0 с", sel: true },
+  { t: "31.08 08:51:45", a: "Проведення в BAS / 1С", mode: "Тригер", st: "ok", ent: "РН-0004790 · ТОВ «Лінія Смаку»", dur: "2,7 с" },
+  { t: "31.08 06:05:02", a: "Рознесення банківської виписки", mode: "Розклад", st: "ok", ent: "45 транзакцій · UA83…4567", dur: "18,3 с" },
+  { t: "30.08 17:00:00", a: "Нагадування про оригінали", mode: "Розклад", st: "wait", ent: "6 листів чекають підтвердження", dur: "1,2 с" },
+  { t: "30.08 14:22:10", a: "Проведення в BAS / 1С", mode: "Повтор", st: "ok", ent: "РН-0004702 · ТОВ «Лінія Смаку»", dur: "3,4 с", retry: "повтор запуску № 8814" },
+  { t: "30.08 11:03:52", a: "Розпізнавання документів з пошти", mode: "Вебхук", st: "fail", ent: "РН-991 · ТОВ «Лінія Смаку»", dur: "44,8 с" }
+];
+const RUN_ST = { ok: ["b-ok", "Успішно"], fail: ["b-crit", "Помилка"], wait: ["b-warn", "Чекає людину"], run: ["b-info", "Виконується"] };
+
+const FAILED_RUN = {
+  id: "8901", a: "Проведення в BAS / 1С", ent: "2209/1 · ТОВ «Буд-Альянс»", t: "31.08.2026, 08:54:12",
+  steps: [
+    { n: 1, t: "Отримати документ із черги", st: "ok", io: "documents.id = 4821 · status = verified" },
+    { n: 2, t: "Перевірити ключ ідемпотентності", st: "ok", io: "natural_key = budal|32490244|ВН|2209/1|2026-08-27 → в BAS не знайдено" },
+    { n: 3, t: "Знайти контрагента в базі клієнта", st: "ok", io: "Catalog_Контрагенти(ЄДРПОУ 32490244) → 6f2a-…-91c4" },
+    { n: 4, t: "Зібрати табличну частину", st: "ok", io: "9 рядків · 12 840,00 ₴ · рахунки 281 / 631" },
+    { n: 5, t: "Створити документ у BAS", st: "fail", io: "POST /odata/standard.odata/Document_ПоступлениеТоваровУслуг → 401 Unauthorized" }
+  ],
+  human: "Крок 5 «Створити документ у BAS»: сервер BAS відповів 401 — пароль користувача інтеграції BAS_INTEGRATION недійсний з 30.08.2026.",
+  fix: "Оновіть пароль у credentials n8n «BAS · Буд-Альянс (Basic)» і повторіть запуск. Документ у BAS не створено — дубля не буде."
+};
+
+const DASH = {
+  updated: "31.08.2026, 09:14", period: "серпень 2026",
+  kpis: [
+    { k: "Оброблено документів", v: "1 842", d: "+7 % до липня", tone: "ok", go: "registry" },
+    { k: "Без ручного втручання", v: "68 %", d: "ціль 70 % · було 61 % у липні", tone: "ok", go: "registry" },
+    { k: "У черзі на перевірку", v: "23", d: "найстаріший — 1 д 4 год", tone: "warn", go: "queue" },
+    { k: "Помилки автоматизації", v: "3", d: "усі мають власника", tone: "crit", go: "automation" }
+  ],
+  spark: [58, 71, 66, 84, 92, 41, 12, 77, 88, 95, 81, 74, 36, 9],
+  attention: [
+    { tone: "crit", t: "«Проведення в BAS» падає з 401 на базі «Буд-Альянс»", s: "3 запуски з 08:54 · власник: Богдан К.", go: "automation" },
+    { tone: "warn", t: "7 документів чекають оригінал понад 30 днів", s: "на 284 610,00 ₴ · найстаріший — ТОВ «Ашан Україна»", go: "originals" },
+    { tone: "warn", t: "Незакриті послуги за серпень: 4 клієнти, 11 договорів", s: "закриття до 05.09 — інакше зсув по ПДВ", go: "registry" },
+    { tone: "crit", t: "Розбіжність в акті звірки з ТОВ «Епіцентр К» — 3 480,00 ₴", s: "акт не надіслано, чекає рішення", go: "acts" }
+  ]
+};
+
+/* --------------------------------------------------------- стан */
+const S = {
+  screen: "queue", sel: "d1", seg: "late", role: "operator", client: "all",
+  killed: false, states: {}, bulk: new Set(), density: "normal", view: "wait",
+  runQuery: "", bankSel: "t2", actSel: 0, posting: false, posted: false, verifyHl: null
+};
+const stateOf = k => S.states[k] || "ok";
+
+/* ------------------------------------------------------ утиліти */
+function toast(html, undo) {
+  const box = $("#toasts"), el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = `<span>${html}</span>` + (undo ? `<button type="button" data-undo="1">Скасувати</button>` : "");
+  box.appendChild(el);
+  const kill = () => el.remove();
+  if (undo) el.querySelector("[data-undo]").addEventListener("click", () => { undo(); kill(); });
+  setTimeout(kill, 6500);
+}
+function badge(map, key) { const [c, t] = map[key] || ["b-mute", key]; return `<span class="badge ${c}"><span class="dot"></span>${esc(t)}</span>`; }
+function aiMark(why) { return `<span class="ai" role="button" tabindex="0" data-ai="${esc(why)}" title="Звідки це значення">AI</span>`; }
+function clientName(id) { const c = CLIENTS.find(c => c.id === id); return c ? c.name : "—"; }
+
+function stateBlock(kind, screen) {
+  if (kind === "loading") return `<div class="sklist">${'<div class="sk"></div>'.repeat(6)}</div>`;
+  if (kind === "empty") return `<div class="state"><h3>Порожньо — і це добре</h3><p>За обраними умовами записів немає. Черга розібрана, відкладених — 4.</p><button class="btn" data-go="registry">Подивитись відкладені</button></div>`;
+  if (kind === "error") return `<div class="state"><h3>Не вдалося завантажити дані</h3><p>База не відповідає більше 30 секунд. Фільтри й введене збережено — після повтору повернетесь у той самий зріз.</p><button class="btn primary" data-retry="${esc(screen)}">Повторити</button></div>`;
+  if (kind === "noperm") return `<div class="state"><h3>Немає доступу до цього розділу</h3><p>Розділ доступний головному бухгалтеру й адміністратору. Ваша роль — оператор вводу.</p><button class="btn" data-ask="1">Запросити доступ</button></div>`;
+  return "";
+}
+function screenHead(title, sub, key, extra) {
+  const st = stateOf(key);
+  return `<div class="shead">
+    <div><h1>${title}</h1><div class="sub">${sub}</div></div>
+    ${extra || ""}
+    <div class="statepick">
+      <label class="u" for="st-${key}">Стан екрана</label>
+      <select id="st-${key}" data-state="${key}">
+        <option value="ok"${st === "ok" ? " selected" : ""}>робочий</option>
+        <option value="loading"${st === "loading" ? " selected" : ""}>завантаження</option>
+        <option value="empty"${st === "empty" ? " selected" : ""}>порожньо</option>
+        <option value="error"${st === "error" ? " selected" : ""}>помилка</option>
+        <option value="noperm"${st === "noperm" ? " selected" : ""}>немає доступу</option>
+      </select>
+    </div>
+  </div>`;
+}
+
+/* ------------------------------------------------------- екрани */
+function scrQueue() {
+  const st = stateOf("queue");
+  const head = screenHead("Черга на перевірку", "Сортування — за строком реакції: спершу прострочене. SLA на документ — 4 години.", "queue");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "queue")}</div>`;
+
+  const segs = [
+    { k: "late", t: "Прострочено", n: QUEUE.filter(d => d.seg === "late").length, alarm: true },
+    { k: "today", t: "Сьогодні", n: QUEUE.filter(d => d.seg === "today").length },
+    { k: "snoozed", t: "Відкладені", n: QUEUE.filter(d => d.seg === "snoozed").length }
+  ];
+  const list = QUEUE.filter(d => d.seg === S.seg && (S.client === "all" || d.client === S.client));
+  const d = QUEUE.find(x => x.id === S.sel) || list[0];
+
+  const rows = list.length ? list.map(x => `
+    <button type="button" class="qrow" role="option" data-pick="${x.id}" aria-selected="${x.id === (d && d.id)}">
+      <span class="l1"><span class="doc">${esc(x.doc)}</span><span class="sum num">${x.sum ? money(x.sum) : "— ?"}</span></span>
+      <span class="l2">${esc(x.party)}<span style="color:var(--ink-3)">·</span>${esc(clientName(x.client))}</span>
+      <span class="l3">
+        <span class="badge b-${x.rlevel === "crit" ? "crit" : x.rlevel === "warn" ? "warn" : "mute"}"><span class="dot"></span>${esc(x.reason)}</span>
+        ${x.ai ? aiMark("Поля витягнуто мовною моделлю зі скану") : ""}
+        <span class="age${x.late ? " late" : ""}">${esc(x.age)}</span>
+      </span>
+    </button>`).join("") : `<div class="state"><h3>Черга розібрана</h3><p>У сегменті «${esc(segs.find(s => s.k === S.seg).t)}» нічого немає.</p></div>`;
+
+  const det = d ? `
+    <div style="padding:16px 18px 26px">
+      <div class="card" style="margin-bottom:12px">
+        <div class="ch"><h3>${esc(d.doc)} · ${esc(d.type)}</h3>${badge({ x: [d.rlevel === "crit" ? "b-crit" : "b-warn", d.reason] }, "x")}</div>
+        <div class="cb">
+          <dl>
+            <div class="frow"><dt>Контрагент</dt><dd>${esc(d.party)} <span class="num" style="color:var(--ink-3)">ЄДРПОУ ${esc(d.edrpou)}</span></dd></div>
+            <div class="frow"><dt>Клієнт на обслуговуванні</dt><dd>${esc(clientName(d.client))}</dd></div>
+            <div class="frow"><dt>Дата документа</dt><dd>${esc(d.date)}</dd></div>
+            <div class="frow"><dt>Сума з ПДВ</dt><dd class="num" style="font-weight:600">${d.sum ? money(d.sum) + " ₴" : "не розпізнано"}</dd></div>
+            <div class="frow"><dt>Рядків</dt><dd>${d.lines || "—"}</dd></div>
+            <div class="frow"><dt>Канал надходження</dt><dd>${esc(d.src)}</dd></div>
+            <div class="frow"><dt>Впевненість розпізнавання</dt><dd>${d.conf === "—" ? "не застосовується — дані з XML" : esc(d.conf) + " " + aiMark("Оцінка за повнотою полів і якістю скану")}</dd></div>
+            <div class="frow"><dt>Відповідальний</dt><dd>${esc(d.owner)}</dd></div>
+          </dl>
+        </div>
+      </div>
+      <div class="note ${d.rlevel === "crit" ? "crit" : "warn"}" style="margin-bottom:12px">
+        <b>Чому документ тут:</b> ${esc(d.reason)}. Автоматика зупинилася перед проведенням — це рівень «робить з підтвердженням».
+      </div>
+      <div style="display:flex; gap:9px; flex-wrap:wrap">
+        <button class="btn primary" data-open-verify="1">Відкрити перевірку</button>
+        <button class="btn" data-snooze="${esc(d.id)}">Відкласти</button>
+        <button class="btn" data-handoff="1">Передати колезі</button>
+        <span class="gapme" style="flex:1"></span>
+        <button class="btn danger" data-reject="1">Повернути постачальнику</button>
+      </div>
+      <p style="color:var(--ink-3); font-size:12px; margin-top:12px">Клавіатура: <span class="kbd">↑</span> <span class="kbd">↓</span> — рух по черзі, <span class="kbd">Enter</span> — відкрити, <span class="kbd">S</span> — відкласти.</p>
+    </div>` : `<div class="state"><h3>Нічого не вибрано</h3><p>Оберіть документ у списку зліва.</p></div>`;
+
+  return head + `<div class="body flush"><div class="split">
+    <div class="left">
+      <div class="seg" role="tablist">${segs.map(s => `<button type="button" class="segbtn${s.alarm ? " alarm" : ""}" data-seg="${s.k}" aria-pressed="${S.seg === s.k}">${s.t} <i>${s.n}</i></button>`).join("")}</div>
+      <div role="listbox" aria-label="Документи на перевірку">${rows}</div>
+    </div>
+    <div class="right">${det}</div>
+  </div></div>`;
+}
+
+function scrVerify() {
+  const d = DOC, sumLines = d.lines.reduce((a, l) => a + l.amount, 0);
+  const mismatch = Math.abs(sumLines - d.base) > 0.01;
+  const hl = f => S.verifyHl === f ? " hl" : "";
+  const head = `<div class="shead">
+    <div><h1>Перевірка документа</h1><div class="sub">${esc(d.type)} № ${esc(d.number)} від ${esc(d.date)} · позиція <b>3 з 27</b> у черзі</div></div>
+    <div class="statepick"><button class="btn sm" data-go="queue">← До черги</button><button class="btn sm" data-next-doc="1">Наступний →</button></div>
+  </div>`;
+
+  const scan = `<div class="scan">
+    <h4>ВИДАТКОВА НАКЛАДНА</h4>
+    <div class="meta">№ <span class="hl-number${hl("number")}">${esc(d.number)}</span> від <span class="hl-date${hl("date")}">${esc(d.date)}</span> р.</div>
+    <div class="party"><b>Постачальник:</b> <span class="hl-supplier${hl("supplier")}">${esc(d.supplier)}</span>, ЄДРПОУ <span class="hl-edrpou${hl("edrpou")}">${esc(d.supplierEdrpou)}</span></div>
+    <div class="party"><b>Покупець:</b> ${esc(d.buyer)}, ЄДРПОУ ${esc(d.buyerEdrpou)}</div>
+    <div class="party"><b>Підстава:</b> ${esc(d.contract)}</div>
+    <table><thead><tr><th>№</th><th>Найменування</th><th class="r">К-сть</th><th class="r">Ціна</th><th class="r">Сума</th></tr></thead><tbody>
+      ${d.lines.map(l => `<tr${S.verifyHl === "line" + l.n ? ' style="background:#CFE4FA"' : ""}><td>${l.n}</td><td>${esc(l.raw)}</td><td class="r">${l.qty}</td><td class="r">${money(l.price)}</td><td class="r">${money(l.amount)}</td></tr>`).join("")}
+      <tr><td colspan="5" style="text-align:center; color:#888">… ще 14 рядків, стор. 1 з 2 …</td></tr>
+    </tbody></table>
+    <div class="tot">Разом без ПДВ: <b class="hl-base${hl("base")}">${money(d.base)}</b> грн<br>ПДВ 20 %: <b>${money(d.vat)}</b> грн<br>Усього з ПДВ: <b>${money(d.total)}</b> грн</div>
+    <div class="sig"><span>Відпустив ______________</span><span>Отримав ______________</span></div>
+  </div>`;
+
+  const lineRow = l => {
+    const need = !l.match;
+    return `<tr class="${need ? "need" : ""}" data-line="${l.n}">
+      <td class="r">${l.n}</td>
+      <td>
+        ${need
+          ? `<select aria-label="Номенклатура для рядка ${l.n}"><option>— оберіть зі списку —</option>${l.cand.map(c => `<option>${esc(c)}</option>`).join("")}<option>+ Створити нову позицію</option></select>
+             <span class="raw">З документа: «${esc(l.raw)}»</span>`
+          : `${esc(l.match)} <span class="raw">З документа: «${esc(l.raw)}» · зіставлено за ${l.method === "код" ? "кодом номенклатури" : "підтвердженим зіставленням від 14.07.2026"}</span>`}
+      </td>
+      <td class="r">${l.qty} ${esc(l.unit)}</td>
+      <td class="r">${money(l.amount)}</td>
+      <td><span class="acct">Дт ${l.acct}</span> ${need ? aiMark("Рахунок запропоновано моделлю — правила під цю позицію ще немає") : ""}</td>
+      <td>${need ? `<span class="badge b-warn"><span class="dot"></span>впевненість ${esc(l.conf)}</span>` : `<span class="badge b-ok"><span class="dot"></span>точний збіг</span>`}</td>
+    </tr>`;
+  };
+
+  const right = `
+    ${mismatch ? "" : ""}
+    <div class="fields">
+      <div class="note info">
+        <b>Що зробила автоматика.</b> Лист із docs@ надійшов ${esc(d.incoming)}. Скан розпізнано, контрагента знайдено за ЄДРПОУ,
+        16 із 18 рядків зіставлено з номенклатурою «Лінія Смаку» точно. <b>Не проведено</b> — чекає вашого підтвердження.
+      </div>
+
+      <div class="fgroup">
+        <header><h3>Шапка документа</h3><span class="badge b-ok"><span class="dot"></span>арифметика зійшлася</span></header>
+        <dl>
+          <div class="frow"><dt>Тип документа</dt><dd><span class="fval" contenteditable="true" data-hl="type">${esc(d.type)}</span> ${aiMark("Класифіковано за заголовком і структурою таблиці")}</dd></div>
+          <div class="frow"><dt>Номер</dt><dd><span class="fval" contenteditable="true" data-hl="number">${esc(d.number)}</span> ${aiMark("Витягнуто зі скану, рядок «№ РН-0004821»")}</dd></div>
+          <div class="frow"><dt>Дата</dt><dd><span class="fval" contenteditable="true" data-hl="date">${esc(d.date)}</span> ${aiMark("Витягнуто зі скану")}</dd></div>
+          <div class="frow"><dt>Постачальник</dt><dd><span class="fval" contenteditable="true" data-hl="supplier">${esc(d.supplier)}</span> <span class="badge b-ok"><span class="dot"></span>знайдено за ЄДРПОУ</span></dd></div>
+          <div class="frow"><dt>ЄДРПОУ</dt><dd><span class="fval num" contenteditable="true" data-hl="edrpou">${esc(d.supplierEdrpou)}</span></dd></div>
+          <div class="frow"><dt>Підстава</dt><dd><span class="fval" contenteditable="true">${esc(d.contract)}</span> <span class="badge b-ok"><span class="dot"></span>чинний договір</span></dd></div>
+        </dl>
+      </div>
+
+      <div class="fgroup">
+        <header><h3>Суми</h3></header>
+        <dl>
+          <div class="frow"><dt>Без ПДВ</dt><dd><span class="fval num" contenteditable="true" data-hl="base">${money(d.base)}</span> ₴</dd></div>
+          <div class="frow"><dt>ПДВ (${esc(d.vatRate)})</dt><dd><span class="fval num" contenteditable="true">${money(d.vat)}</span> ₴ <span class="badge b-ok"><span class="dot"></span>20 % від бази ± 0,02</span></dd></div>
+          <div class="frow"><dt>Усього</dt><dd><b class="num">${money(d.total)}</b> ₴</dd></div>
+          <div class="frow"><dt>Сума рядків</dt><dd><span class="num">${money(sumLines)}</span> ₴ <span class="badge b-warn"><span class="dot"></span>показано 4 рядки з 18</span></dd></div>
+        </dl>
+      </div>
+
+      <div class="fgroup">
+        <header><h3>Рядки — 4 із 18 показано</h3><span class="badge b-warn"><span class="dot"></span>2 потребують рішення</span></header>
+        <div style="overflow-x:auto">
+          <table class="lines"><thead><tr><th class="r">№</th><th>Номенклатура клієнта</th><th class="r">К-сть</th><th class="r">Сума</th><th>Рахунок</th><th>Зіставлення</th></tr></thead>
+          <tbody>${d.lines.map(lineRow).join("")}</tbody></table>
+        </div>
+      </div>
+
+      <div class="fgroup">
+        <header><h3>Проводки, які буде створено</h3></header>
+        <div class="cb" style="padding:11px 13px; font-family:var(--mono); font-size:12px; line-height:1.9">
+          Дт <b>281</b> «Товари на складі» &nbsp;— Кт <b>631</b> «Розрахунки з постачальниками» &nbsp;<span class="num">37 333,40</span><br>
+          Дт <b>209</b> «Інші матеріали» &nbsp;— Кт <b>631</b> &nbsp;<span class="num">2 250,00</span><br>
+          Дт <b>93</b> «Витрати на збут» &nbsp;— Кт <b>631</b> &nbsp;<span class="num">260,27</span><br>
+          Дт <b>6442</b> «Податковий кредит» — Кт <b>631</b> &nbsp;<span class="num">7 968,73</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="actionbar">
+      <button class="btn primary" id="confirmbtn" ${S.posted ? "disabled" : ""}>${S.posted ? "Проведено в BAS" : "Підтвердити і провести в BAS"}</button>
+      <button class="btn">Зберегти чернетку</button>
+      <span class="kbd">Ctrl ⏎</span>
+      <span class="gapme"></span>
+      <button class="btn danger" data-reject="1">Повернути постачальнику</button>
+    </div>`;
+
+  return head + `<div class="body flush"><div class="verify">
+    <div class="vleft">
+      <div class="scanbar">
+        <button class="btn sm">− </button><span class="num" style="font-size:12px">100 %</span><button class="btn sm">+</button>
+        <span style="color:var(--ink-3); font-size:12px">Стор. 1 з 2</span>
+        <span class="gapme" style="flex:1"></span>
+        <button class="btn sm">Завантажити оригінал</button>
+      </div>
+      ${scan}
+      <p style="color:var(--ink-3); font-size:11.5px; text-align:center; margin-top:10px">Клік по полю праворуч підсвічує його місце в документі.</p>
+    </div>
+    <div class="vright">${right}</div>
+  </div></div>`;
+}
+
+function scrRegistry() {
+  const st = stateOf("registry");
+  const head = screenHead("Реєстр документів", "Єдиний журнал первинки по всіх клієнтах на обслуговуванні.", "registry");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "registry")}</div>`;
+
+  const views = [
+    { k: "wait", t: "Чекають перевірки" }, { k: "aug", t: "Проведені за серпень" },
+    { k: "noorig", t: "Без оригіналу > 14 днів" }, { k: "diff", t: "Розбіжності з ПН" }
+  ];
+  let rows = REGISTRY.filter(r => S.client === "all" || r.client === S.client);
+  if (S.view === "wait") rows = rows.filter(r => r.status === "review" || r.status === "error");
+  if (S.view === "aug") rows = rows.filter(r => r.status === "posted");
+  if (S.view === "noorig") rows = rows.filter(r => r.orig === "await");
+  if (S.view === "diff") rows = rows.filter(r => r.doc === "77" || r.doc === "2209/1");
+
+  const bulk = S.bulk.size ? `<div class="bulkbar">
+      <b>Вибрано ${S.bulk.size}</b>
+      <button class="btn sm" data-bulk="post">Провести в BAS</button>
+      <button class="btn sm" data-bulk="orig">Запросити оригінали</button>
+      <button class="btn sm" data-bulk="xlsx">Експорт XLSX</button>
+      <span style="flex:1"></span>
+      <button class="btn sm" data-bulk="all">Вибрати всі ${rows.length} за фільтром</button>
+      <button class="btn sm" data-bulk="none">Зняти виділення</button>
+    </div>` : "";
+
+  return head + `<div class="body">
+    ${bulk}
+    <div class="toolbar">
+      <div class="views">${views.map(v => `<button class="view" data-view="${v.k}" aria-pressed="${S.view === v.k}">${v.t}</button>`).join("")}</div>
+      <button class="btn sm" data-density="1">Щільність: ${S.density === "dense" ? "щільна" : "звичайна"}</button>
+      <button class="btn sm">Колонки</button>
+      <span class="count">Показано ${rows.length} з 1 842</span>
+    </div>
+    <div class="chips" style="margin-bottom:11px">
+      <span class="chip">Період: серпень 2026 <button type="button" aria-label="Прибрати фільтр">✕</button></span>
+      <span class="chip">Клієнт: ${esc(S.client === "all" ? "усі" : clientName(S.client))} <button type="button" aria-label="Прибрати фільтр">✕</button></span>
+      <button class="btn sm quiet">Скинути все</button>
+    </div>
+    <div class="tblwrap"><table class="tbl${S.density === "dense" ? " dense" : ""}">
+      <thead><tr>
+        <th style="width:30px"><input type="checkbox" aria-label="Вибрати всі на сторінці" data-bulk="page"></th>
+        <th>Документ</th><th>Клієнт</th><th>Контрагент</th><th>Дата</th><th class="r">Сума, ₴</th>
+        <th>Статус</th><th>Оригінал</th><th>У базі клієнта</th><th>Канал</th>
+      </tr></thead>
+      <tbody>${rows.map(r => `<tr aria-selected="${S.bulk.has(r.doc)}">
+        <td><input type="checkbox" data-pickrow="${esc(r.doc)}" ${S.bulk.has(r.doc) ? "checked" : ""} aria-label="Вибрати ${esc(r.doc)}"></td>
+        <td class="idc">${esc(r.doc)}</td>
+        <td><span class="trunc">${esc(clientName(r.client))}</span></td>
+        <td><span class="trunc">${esc(r.party)}</span></td>
+        <td class="num">${esc(r.date)}</td>
+        <td class="r num">${money(r.sum)}</td>
+        <td>${badge(STATUS_MAP, r.status)}</td>
+        <td>${badge(ORIG_MAP, r.orig)}</td>
+        <td class="num">${r.bas === "—" ? '<span style="color:var(--ink-3)">—</span>' : esc(r.bas) + "…"}</td>
+        <td>${esc(r.src)}</td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+    ${rows.length === 0 ? `<div class="state"><h3>Під ці умови нічого не підходить</h3><p>Активні умови: період «серпень 2026», вид «${esc(views.find(v => v.k === S.view).t)}».</p><button class="btn" data-view="wait">Зняти останню умову</button></div>` : ""}
+  </div>`;
+}
+
+function scrOriginals() {
+  const st = stateOf("originals");
+  const head = screenHead("Контроль оригіналів", "Де застрягли паперові примірники. Поріг протухання заданий на кожну стадію окремо.", "originals");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "originals")}</div>`;
+  return head + `<div class="body">
+    <div class="note info" style="margin-bottom:13px">
+      Автоматизація <b>«Нагадування про оригінали»</b> працює на рівні «радить»: готує лист постачальнику, надсилає людина.
+      <b>6 листів</b> чекають підтвердження. <button class="btn sm" data-approve-mails="1" style="margin-left:6px">Переглянути й надіслати</button>
+    </div>
+    <div class="board">${ORIGINALS.map(c => `
+      <section class="col">
+        <header>
+          <div class="t">${esc(c.title)} <span class="badge b-mute"><span class="dot"></span>${c.cards.length}</span></div>
+          <div class="s">${esc(c.hint)} · ${money(c.cards.reduce((a, x) => a + x.sum, 0))} ₴</div>
+        </header>
+        <div class="stack">${c.cards.length ? c.cards.map(k => `
+          <article class="kcard${k.stale ? " stale" : ""}" tabindex="0">
+            <div class="kt">${esc(k.doc)}</div>
+            <div class="kn">${esc(k.party)}</div>
+            <div class="kf">
+              <span class="badge ${k.stale ? "b-crit" : "b-mute"}"><span class="dot"></span>${k.days} дн.</span>
+              <span class="sum num">${money(k.sum)}</span>
+            </div>
+            <div class="kf" style="color:var(--ink-2); font-size:11.5px">Далі: ${esc(k.next)}</div>
+          </article>`).join("") : `<div class="emptycol">Порожньо на цій стадії</div>`}</div>
+      </section>`).join("")}</div>
+    <p style="color:var(--ink-3); font-size:12px; margin-top:12px">Перетягування мишею дублюється меню «Перемістити на стадію» на картці — стадія змінюється й з клавіатури.</p>
+  </div>`;
+}
+
+function scrBank() {
+  const st = stateOf("bank");
+  const head = screenHead("Банківська виписка", `${esc(BANK.bankName)} · ${esc(BANK.account)} · ${esc(clientName(BANK.client))} · виписка за ${esc(BANK.day)}, завантажено ${esc(BANK.imported)}`, "bank");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "bank")}</div>`;
+
+  const t = BANK.tx.find(x => x.id === S.bankSel) || BANK.tx[0];
+  const stMap = { auto: ["b-ok", "Зіставлено автоматично"], manual: ["b-warn", "Потрібне рішення"], unknown: ["b-crit", "Не ідентифіковано"] };
+
+  const detail = t.state === "auto" ? `
+    <div class="note" style="margin-bottom:12px"><b>Зіставлено правилом, без моделі.</b> ${esc(t.how)}</div>
+    <div class="card"><div class="ch"><h3>${esc(t.match)}</h3>${badge(stMap, "auto")}</div>
+      <div class="cb"><dl>
+        <div class="frow"><dt>Сума платежу</dt><dd class="num" style="font-weight:600">${money(t.sum)} ₴</dd></div>
+        <div class="frow"><dt>Рахунок обліку</dt><dd><span class="acct">${esc(t.acct)}</span></dd></div>
+        <div class="frow"><dt>Буде створено в BAS</dt><dd>${t.dir === "out" ? "Списання з поточного рахунку" : "Надходження на поточний рахунок"}</dd></div>
+      </dl></div></div>
+    <div style="display:flex; gap:9px; margin-top:12px"><button class="btn primary" data-bank-ok="1">Підтвердити рознесення</button><button class="btn">Змінити зіставлення</button></div>`
+  : t.cands ? `
+    <div class="note warn" style="margin-bottom:12px"><b>Два кандидати з однаковою сумою.</b> У призначенні платежу немає номера рахунку — правило не спрацювало, модель запропонувала варіанти. Рішення за вами.</div>
+    ${t.cands.map((c, i) => `<div class="card" style="margin-bottom:9px"><div class="ch"><h3>${esc(c.t)}</h3><span class="badge ${c.conf === "висока" ? "b-ok" : "b-mute"}"><span class="dot"></span>впевненість ${esc(c.conf)}</span>${aiMark("Кандидатів відібрано за сумою, контрагентом і відкритим сальдо; порядок запропонувала модель")}</div>
+      <div class="cb" style="color:var(--ink-2); font-size:12.5px">${esc(c.why)}<div style="margin-top:9px"><button class="btn sm primary" data-bank-pick="${i}">Обрати цей</button></div></div></div>`).join("")}
+    <button class="btn" style="margin-top:4px">Жоден не підходить — рознести вручну</button>`
+  : t.split ? `
+    <div class="note warn" style="margin-bottom:12px"><b>Часткова оплата за двома накладними.</b> Модель прочитала номери з призначення, суми розподілено пропорційно залишкам. Перевірте розподіл.</div>
+    <div class="card"><div class="ch"><h3>Розподіл ${money(t.sum)} ₴</h3>${aiMark("Номери накладних витягнуто з тексту призначення платежу")}</div>
+      <div class="cb"><dl>${t.split.map(s => `<div class="frow"><dt>${esc(s.t)}</dt><dd><span class="fval num" contenteditable="true">${money(s.v)}</span> ₴</dd></div>`).join("")}
+      <div class="frow"><dt>Разом</dt><dd class="num" style="font-weight:600">${money(t.split.reduce((a, s) => a + s.v, 0))} ₴ <span class="badge b-ok"><span class="dot"></span>сходиться з платежем</span></dd></div></dl></div></div>
+    <div style="display:flex; gap:9px; margin-top:12px"><button class="btn primary" data-bank-ok="1">Підтвердити розподіл</button></div>`
+  : `
+    <div class="note crit" style="margin-bottom:12px"><b>Контрагента не визначено.</b> Платник — фізична особа, ЄДРПОУ немає, у призначенні немає номера документа. Автоматично рознести неможливо.</div>
+    <div class="card"><div class="cb"><dl>
+      <div class="frow"><dt>Сума</dt><dd class="num">${money(t.sum)} ₴</dd></div>
+      <div class="frow"><dt>Призначення</dt><dd>${esc(t.purpose)}</dd></div>
+      <div class="frow"><dt>Що зробити</dt><dd>Уточнити в клієнта й рознести вручну або віднести на 685 «Розрахунки з іншими кредиторами».</dd></div>
+    </dl></div></div>
+    <div style="display:flex; gap:9px; margin-top:12px"><button class="btn primary">Рознести вручну</button><button class="btn" data-ask-client="1">Запитати клієнта</button></div>`;
+
+  return head + `<div class="body flush"><div class="split">
+    <div class="left">
+      <div class="seg">
+        <button class="segbtn" aria-pressed="true">Усі <i>45</i></button>
+        <button class="segbtn">Авто <i>${BANK.auto}</i></button>
+        <button class="segbtn alarm">Рішення <i>${BANK.manual}</i></button>
+        <button class="segbtn alarm">Не визначено <i>${BANK.unknown}</i></button>
+      </div>
+      ${BANK.tx.map(x => `<button type="button" class="qrow" data-bank="${x.id}" aria-selected="${x.id === t.id}">
+        <span class="l1"><span class="doc">${esc(x.time)} · ${x.dir === "in" ? "надходження" : "списання"}</span><span class="sum num" style="color:${x.dir === "in" ? "var(--ok)" : "var(--ink)"}">${x.dir === "in" ? "+" : "−"}${money(x.sum)}</span></span>
+        <span class="l2">${esc(x.party)}</span>
+        <span class="l3"><span class="badge ${stMap[x.state][0]}"><span class="dot"></span>${esc(stMap[x.state][1])}</span></span>
+      </button>`).join("")}
+    </div>
+    <div class="right"><div style="padding:16px 18px 26px">
+      <div class="card" style="margin-bottom:12px"><div class="cb">
+        <div class="u" style="margin-bottom:5px">Призначення платежу — як у виписці</div>
+        <div style="font-family:var(--mono); font-size:12px; background:var(--sunken); padding:9px 11px; border-radius:var(--radius)">${esc(t.purpose)}</div>
+      </div></div>
+      ${detail}
+    </div></div>
+  </div></div>`;
+}
+
+function scrActs() {
+  const st = stateOf("acts");
+  const head = screenHead("Акти звірок", "Формуються з оборотів у базі клієнта, надсилаються через Вчасно, підписання відстежується автоматично.", "acts");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "acts")}</div>`;
+  const a = ACTS[S.actSel];
+  return head + `<div class="body">
+    <div class="tblwrap" style="margin-bottom:14px"><table class="tbl">
+      <thead><tr><th>Контрагент</th><th>Клієнт</th><th>Період</th><th class="r">Наше сальдо, ₴</th><th class="r">Їх сальдо, ₴</th><th class="r">Розбіжність, ₴</th><th>Статус</th><th></th></tr></thead>
+      <tbody>${ACTS.map((x, i) => `<tr aria-selected="${i === S.actSel}">
+        <td><b>${esc(x.party)}</b><span class="raw num">ЄДРПОУ ${esc(x.edrpou)}</span></td>
+        <td>${esc(clientName(x.client))}</td><td class="num">${esc(x.period)}</td>
+        <td class="r num">${money(x.our)}</td><td class="r num">${x.their ? money(x.their) : "—"}</td>
+        <td class="r num" style="${x.diff ? "color:var(--crit); font-weight:600" : ""}">${x.diff ? money(x.diff) : "0,00"}</td>
+        <td>${badge(ACT_STATUS, x.status)}</td>
+        <td><button class="btn sm" data-act="${i}">Відкрити</button></td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+
+    <div class="card">
+      <div class="ch"><h3>${esc(a.party)} · ${esc(a.period)}</h3>${badge(ACT_STATUS, a.status)}</div>
+      <div class="cb">
+        ${a.diff ? `<div class="note crit" style="margin-bottom:12px"><b>Розбіжність ${money(a.diff)} ₴.</b> Система звірила документ до документа й показує, чим саме відрізняються дані. Акт не надіслано — спершу рішення по трьох позиціях.</div>
+        <table class="lines" style="margin-bottom:12px"><thead><tr><th>Позиція</th><th>Що це означає</th><th>Дія</th></tr></thead><tbody>
+          ${ACT_DIFF.map(x => `<tr><td>${esc(x.txt)}</td><td style="color:var(--ink-2)">${esc(x.note)}</td>
+          <td><button class="btn sm">${x.side === "us" ? "Надіслати копію" : "Запросити документ"}</button></td></tr>`).join("")}
+        </tbody></table>` : `<div class="note" style="margin-bottom:12px">Розбіжностей немає — сальдо збігається до копійки.</div>`}
+        <div style="display:flex; gap:9px; flex-wrap:wrap">
+          <button class="btn primary" data-send-act="1">Надіслати акт через Вчасно</button>
+          <button class="btn">Завантажити PDF</button>
+          <button class="btn quiet">Історія звірок з контрагентом</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function scrAutomation() {
+  const st = stateOf("automation");
+  const head = screenHead("Автоматизації та історія запусків", "Головний екран довіри: що система робить сама, що вже зробила і як полагодити те, що впало. Історію зберігаємо 90 днів.", "automation");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "automation")}</div>`;
+
+  const q = S.runQuery.trim().toLowerCase();
+  const runs = q ? RUNS.filter(r => (r.ent + " " + r.a).toLowerCase().includes(q)) : RUNS;
+
+  return head + `<div class="body">
+    ${S.killed ? `<div class="note crit" style="margin-bottom:13px"><b>Автоматику зупинено.</b> Нові документи приймаються й накопичуються в черзі, але нічого не проводиться й не надсилається. Увімкнути може будь-який оператор — адміністратор не потрібен.</div>` : ""}
+    <div class="card" style="margin-bottom:16px">
+      <div class="ch"><h3>Автоматизації</h3><span class="badge b-mute"><span class="dot"></span>рівень автономії — налаштування, а не властивість коду</span></div>
+      ${AUTOS.map(a => `<div class="autorow">
+        <div>
+          <div class="an">${esc(a.name)}</div>
+          <div class="ad">${esc(a.desc)}</div>
+          <div class="ad" style="color:var(--ink-3); font-size:11.5px; margin-top:4px">
+            Обмеження: ${esc(a.limit)} · Останній запуск: ${a.silent ? `<b style="color:var(--crit)">${esc(a.last)}</b>` : esc(a.last)}
+          </div>
+        </div>
+        <div class="lvl" role="group" aria-label="Рівень автономії: ${esc(a.name)}">
+          <button data-lvl="${a.key}:1" aria-pressed="${a.lvl === 1}" title="Готує чернетку, робить людина">радить</button>
+          <button data-lvl="${a.key}:2" aria-pressed="${a.lvl === 2}" title="Робить усе, крім останнього кроку">з підтвердженням</button>
+          <button data-lvl="${a.key}:3" aria-pressed="${a.lvl === 3}" title="Робить сама, є kill switch">сама</button>
+        </div>
+        <button class="sw" role="switch" aria-checked="${a.on && !S.killed}" aria-label="Увімкнено: ${esc(a.name)}" data-toggle="${a.key}"></button>
+        <button class="btn sm" data-runsearch="${esc(a.name)}">Запуски</button>
+      </div>`).join("")}
+    </div>
+
+    <div class="toolbar">
+      <div class="searchwrap" style="max-width:340px">
+        <span class="mag" aria-hidden="true">⌕</span>
+        <input id="runq" value="${esc(S.runQuery)}" placeholder="Що було з документом РН-0004821…" aria-label="Пошук запусків за документом">
+      </div>
+      <span class="badge b-ok"><span class="dot"></span>успішних за 24 год: 214</span>
+      <span class="badge b-crit"><span class="dot"></span>помилок: 3</span>
+      <span class="badge b-warn"><span class="dot"></span>чекають людину: 6</span>
+      <span class="count">Показано ${runs.length} з 1 038</span>
+    </div>
+
+    <div class="tblwrap" style="margin-bottom:14px"><table class="tbl">
+      <thead><tr><th>Час</th><th>Автоматизація</th><th>Режим</th><th>Запис</th><th>Тривалість</th><th>Статус</th><th></th></tr></thead>
+      <tbody>${runs.length ? runs.map(r => `<tr aria-selected="${!!r.sel}">
+        <td class="num">${esc(r.t)}</td><td>${esc(r.a)}</td><td>${esc(r.mode)}</td>
+        <td class="idc">${esc(r.ent)}${r.retry ? `<span class="raw">${esc(r.retry)}</span>` : ""}</td>
+        <td class="num">${esc(r.dur)}</td><td>${badge(RUN_ST, r.st)}</td>
+        <td>${r.st === "fail" ? `<button class="btn sm" data-run="1">Розібрати</button>` : ""}</td>
+      </tr>`).join("") : `<tr><td colspan="7"><div class="state"><h3>Запусків за цим запитом немає</h3><p>Спробуйте номер документа без префікса або оберіть іншу автоматизацію.</p></div></td></tr>`}</tbody>
+    </table></div>
+
+    <div class="card">
+      <div class="ch"><h3>Запуск № ${esc(FAILED_RUN.id)} · ${esc(FAILED_RUN.a)}</h3>${badge(RUN_ST, "fail")}<span style="color:var(--ink-3); font-size:12px; margin-left:auto">${esc(FAILED_RUN.ent)} · ${esc(FAILED_RUN.t)}</span></div>
+      <div class="cb">
+        <div class="note crit" style="margin-bottom:13px"><b>${esc(FAILED_RUN.human)}</b><br><br>Що зробити: ${esc(FAILED_RUN.fix)}</div>
+        <div class="steps">${FAILED_RUN.steps.map(s => `<div class="step ${s.st === "fail" ? "fail" : ""}">
+          <span class="n">${s.n}</span>
+          <span>${esc(s.t)}<span class="io">${esc(s.io)}</span></span>
+          <span>${badge(RUN_ST, s.st === "fail" ? "fail" : "ok")}</span>
+        </div>`).join("")}</div>
+        <div style="display:flex; gap:9px; margin-top:14px; flex-wrap:wrap">
+          <button class="btn primary" data-retry-run="orig">Повторити з вихідними даними</button>
+          <button class="btn" data-retry-run="cur">Повторити з поточною версією</button>
+          <button class="btn quiet">Показати технічні деталі</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function scrDashboard() {
+  const st = stateOf("dashboard");
+  const head = screenHead("Панель", `Дані станом на ${esc(DASH.updated)} · період: ${esc(DASH.period)}`, "dashboard");
+  if (st !== "ok") return head + `<div class="body">${stateBlock(st, "dashboard")}</div>`;
+  const max = Math.max(...DASH.spark);
+
+  return head + `<div class="body">
+    <div class="kpis" style="margin-bottom:14px">${DASH.kpis.map(k => `
+      <button class="kpi" data-go="${k.go}">
+        <div class="k">${esc(k.k)}</div>
+        <div class="v">${esc(k.v)}</div>
+        <div class="d"><span class="badge b-${k.tone}"><span class="dot"></span>${esc(k.d)}</span></div>
+      </button>`).join("")}</div>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      <div class="card"><div class="ch"><h3>Документів на день, останні 14 днів</h3></div>
+        <div class="cb">
+          <div class="spark">${DASH.spark.map((v, i) => `<i class="${i >= 12 ? "hi" : ""}" style="height:${Math.round(v / max * 100)}%" title="${v} док."></i>`).join("")}</div>
+          <p style="color:var(--ink-3); font-size:11.5px; margin:9px 0 0">Провали 26.08 і 31.08 — вихідні. Пік 24.08 — закриття періоду в трьох клієнтів.</p>
+        </div>
+      </div>
+
+      <div class="card"><div class="ch"><h3>Потребує уваги</h3><span class="badge b-crit"><span class="dot"></span>4</span></div>
+        <div class="cb" style="padding:0">
+          ${DASH.attention.map(a => `<button class="autorow" data-go="${a.go}" style="width:100%; text-align:left; border:0; border-bottom:1px solid var(--line); background:transparent; cursor:pointer; grid-template-columns:8px 1fr auto">
+            <span class="badge b-${a.tone}" style="padding:0; width:8px; height:8px; border-radius:50%; border:0"></span>
+            <span><span class="an">${esc(a.t)}</span><span class="ad">${esc(a.s)}</span></span>
+            <span style="color:var(--ink-3)">→</span>
+          </button>`).join("")}
+        </div>
+      </div>
+
+      ${S.role === "operator"
+        ? `<div class="card"><div class="ch"><h3>Фінансові показники клієнтів</h3></div><div class="cb">${stateBlock("noperm", "dashboard")}</div></div>`
+        : `<div class="card"><div class="ch"><h3>Економіка обробки</h3></div><div class="cb"><dl>
+            <div class="frow"><dt>Документів за місяць</dt><dd class="num">1 842</dd></div>
+            <div class="frow"><dt>Пройшли без людини</dt><dd class="num">1 253 (68 %)</dd></div>
+            <div class="frow"><dt>Середня перевірка вручну</dt><dd class="num">34 с</dd></div>
+            <div class="frow"><dt>Годин на первинку за місяць</dt><dd class="num">18,5 год</dd></div>
+            <div class="frow"><dt>Було до впровадження</dt><dd class="num">≈ 120 год</dd></div>
+          </dl><p style="color:var(--ink-3); font-size:11.5px; margin:9px 0 0">Цифри прототипу — планові. Фактичні рахуються з першого тижня роботи й показуються тут же.</p></div></div>`}
+    </div>
+  </div>`;
+}
+
+/* ------------------------------------------------------- рендер */
+const SCREENS = { queue: scrQueue, verify: scrVerify, registry: scrRegistry, originals: scrOriginals, bank: scrBank, acts: scrActs, automation: scrAutomation, dashboard: scrDashboard };
+const TITLES = { queue: "Черга на перевірку", verify: "Перевірка документа", registry: "Реєстр документів", originals: "Оригінали", bank: "Банківська виписка", acts: "Акти звірок", automation: "Автоматизації", dashboard: "Панель" };
+
+function render() {
+  $("#main").innerHTML = `<div class="screen on">${SCREENS[S.screen]()}</div>`;
+  document.querySelectorAll(".navitem[data-go]").forEach(b => {
+    const on = b.dataset.go === S.screen || (S.screen === "verify" && b.dataset.go === "queue");
+    if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
+  $("#clientname").textContent = S.client === "all" ? "Усі клієнти" : clientName(S.client);
+  $("#rolename").textContent = S.role === "operator" ? "Оператор" : "Головний бухгалтер";
+  const k = $("#kill");
+  k.setAttribute("aria-pressed", String(S.killed));
+  k.classList.toggle("off", S.killed);
+  k.textContent = S.killed ? "▶ Увімкнути автоматику" : "■ Зупинити автоматику";
+  document.title = TITLES[S.screen] + " · Первинка";
+}
+const go = s => { S.screen = s; render(); $("#main").scrollTop = 0; };
+
+/* ---------------------------------------------------- поповери */
+function closePop() { $("#popholder").innerHTML = ""; }
+function openPop(anchor, why) {
+  const r = anchor.getBoundingClientRect();
+  $("#popholder").innerHTML = `<div class="pop" role="dialog" aria-label="Пояснення AI" style="left:${Math.min(r.left, innerWidth - 348)}px; top:${Math.min(r.bottom + 6, innerHeight - 230)}px">
+    <button class="close" data-closepop="1" aria-label="Закрити">✕</button>
+    <h4><span class="ai" style="cursor:default">AI</span> Звідки це значення</h4>
+    <p style="margin:0; color:var(--ink-2)">${esc(why)}</p>
+    <dl>
+      <dt>Модель</dt><dd>Claude Haiku 4.5, витяг за схемою</dd>
+      <dt>Джерело</dt><dd>лист від 26.08.2026 07:41, вкладення <span class="num">rn-0004821.pdf</span>, стор. 1</dd>
+      <dt>Роль моделі</dt><dd>сприйняття — прочитати й витягти. Рішення (рахунок, проведення) ухвалює правило або людина</dd>
+      <dt>Якщо помилково</dt><dd>виправте значення прямо в полі — правка збережеться як підтверджене зіставлення й наступного разу спрацює без моделі</dd>
+    </dl>
+  </div>`;
+}
+function modal(title, bodyHtml, footHtml) {
+  $("#modalholder").innerHTML = `<div class="backdrop" data-backdrop="1"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <header><h3>${esc(title)}</h3></header><div class="mb">${bodyHtml}</div><footer>${footHtml}</footer></div></div>`;
+}
+const closeModal = () => { $("#modalholder").innerHTML = ""; };
+
+/* ------------------------------------------------------- сценарії */
+function approvalGate() {
+  modal("Підтвердження проведення", `
+    <div class="note info" style="margin-bottom:12px">Дія незворотна в тому сенсі, що створює документ у базі клієнта. Ви можете змінити будь-яке значення перед підтвердженням.</div>
+    <dl>
+      <div class="frow"><dt>Що буде створено</dt><dd><b>Надходження товарів та послуг</b></dd></div>
+      <div class="frow"><dt>База клієнта</dt><dd>BAS Бухгалтерія · lina (ТОВ «Лінія Смаку»)</dd></div>
+      <div class="frow"><dt>Документ</dt><dd class="num">№ РН-0004821 від 26.08.2026</dd></div>
+      <div class="frow"><dt>Контрагент</dt><dd>ТОВ «Метро Кеш енд Кері Україна», ЄДРПОУ 32294926</dd></div>
+      <div class="frow"><dt>Рядків</dt><dd>18 · сума <span class="num">47 812,40 ₴</span></dd></div>
+      <div class="frow"><dt>Проведення</dt><dd><b>Без проведення</b> — документ ляже чернеткою, проводить головний бухгалтер</dd></div>
+      <div class="frow"><dt>Захист від дубля</dt><dd>ключ <span class="num">lina|32294926|ВН|РН-0004821|2026-08-26</span> — у базі не знайдено</dd></div>
+    </dl>`,
+    `<button class="btn primary" data-do-post="1">Провести</button>
+     <button class="btn" data-closemodal="1">Змінити дані</button>
+     <span style="flex:1"></span>
+     <span style="color:var(--ink-3); font-size:12px">Якщо не відповісти — документ залишиться в черзі, нічого не станеться</span>`);
+}
+
+function doPost(btn) {
+  closeModal();
+  const b = $("#confirmbtn"); if (!b) return;
+  b.classList.add("busy"); b.textContent = "Проводимо в BAS…"; b.disabled = true;
+  setTimeout(() => {
+    S.posted = true;
+    const q = QUEUE.find(x => x.id === "d1"); if (q) q.seg = "done";
+    const nx = QUEUE.find(x => x.seg === S.seg); S.sel = nx ? nx.id : null;
+    toast('Документ <b>РН-0004821</b> створено в BAS «Лінія Смаку» — чернетка, не проведено.', () => { S.posted = false; if (q) q.seg = "late"; render(); });
+    render();
+  }, 900);
+}
+
+const DEMO = [
+  { s: "dashboard", st: {}, t: "Панель головного бухгалтера: чотири цифри й блок «Потребує уваги». З будь-якої плитки можна провалитися в записи, з яких вона порахована." },
+  { s: "queue", t: "Черга відсортована за строком реакції, а не за датою надходження. Видно, чому кожен документ тут: непідібрана номенклатура, розбіжність в арифметиці, дубль." },
+  { s: "verify", t: "Головний екран: скан ліворуч, витягнуті поля праворуч. Мітка AI стоїть на кожному значенні, яке дала модель, і відкриває пояснення." },
+  { s: "verify", act: "gate", t: "Перед створенням документа в базі клієнта — гейт: повний зміст дії, ключ ідемпотентності й прямо сказано, що проведення не буде." },
+  { s: "bank", t: "Виписка: 38 транзакцій рознесено правилом за номером рахунку в призначенні. Модель підключається тільки там, де правило не спрацювало." },
+  { s: "originals", t: "Оригінали як процес зі стадіями й порогом протухання. Нагадування постачальникам готує автоматика — надсилає людина." },
+  { s: "automation", t: "Екран, якого немає в звичайних CRM: рівень автономії кожної автоматизації, kill switch, історія запусків із пошуком за номером документа." },
+  { s: "automation", st: { automation: "error" }, t: "І чотири стани кожного екрана — завантаження, порожньо, помилка, немає доступу — перемикаються селектором угорі праворуч." },
+  { s: "registry", st: { automation: "ok" }, t: "Реєстр: збережені види, чипси активних фільтрів, лічильник «показано з». Масові дії звітують числами, включно з пропущеними." }
+];
+let demoIx = -1, demoTimer = null;
+function demoStep(n) {
+  demoIx = n;
+  if (n >= DEMO.length) return demoStop();
+  const d = DEMO[n];
+  if (d.st) Object.assign(S.states, d.st);
+  S.screen = d.s; render();
+  if (d.act === "gate") setTimeout(approvalGate, 380); else closeModal();
+  $("#demoholder").innerHTML = `<div class="demobar">
+    <span class="step-n">${n + 1}/${DEMO.length}</span><span>${esc(d.t)}</span>
+    <button data-demo="prev" ${n === 0 ? "disabled" : ""}>←</button>
+    <button data-demo="next">→</button>
+    <button data-demo="stop">Вийти</button>
+  </div>`;
+  clearTimeout(demoTimer);
+  demoTimer = setTimeout(() => demoStep(n + 1), 7000);
+}
+function demoStop() { clearTimeout(demoTimer); demoIx = -1; $("#demoholder").innerHTML = ""; closeModal(); }
+
+/* ---------------------------------------------------- обробники */
+document.addEventListener("click", e => {
+  const t = e.target;
+  const hit = sel => t.closest(sel);
+
+  if (hit("[data-closepop]")) return closePop();
+  if (t.closest(".ai")) { const a = t.closest(".ai"); openPop(a, a.dataset.ai); return; }
+  if (!t.closest(".pop")) closePop();
+
+  if (hit("[data-backdrop]") && t.classList.contains("backdrop")) return closeModal();
+  if (hit("[data-closemodal]")) return closeModal();
+  if (hit("[data-do-post]")) return doPost();
+
+  const nav = hit("[data-go]"); if (nav) return go(nav.dataset.go);
+
+  const seg = hit("[data-seg]"); if (seg) { S.seg = seg.dataset.seg; const f = QUEUE.find(d => d.seg === S.seg); S.sel = f ? f.id : null; return render(); }
+  const pick = hit("[data-pick]"); if (pick) { S.sel = pick.dataset.pick; return render(); }
+  if (hit("[data-open-verify]")) return go("verify");
+  if (hit("[data-next-doc]")) { toast("Наступний документ у черзі — <b>2209/1</b>, ТОВ «Епіцентр К»."); return; }
+
+  const sn = hit("[data-snooze]"); if (sn) {
+    const d = QUEUE.find(x => x.id === sn.dataset.snooze), was = d.seg;
+    d.seg = "snoozed"; d.age = "відкладено до 01.09, 09:00"; render();
+    toast(`<b>${esc(d.doc)}</b> відкладено до завтра, 09:00.`, () => { d.seg = was; render(); });
+    return;
+  }
+  if (hit("[data-handoff]")) { toast("Документ передано <b>Богдану К.</b> Він отримає його у своїй черзі."); return; }
+  if (hit("[data-reject]")) {
+    modal("Повернути документ постачальнику", `<p style="margin:0 0 11px">Постачальнику <b>ТОВ «Метро Кеш енд Кері Україна»</b> піде лист із зазначенням причини. Документ вийде з черги й отримає статус «повернуто».</p>
+      <label class="u" for="rr">Причина — потрапить у лист</label>
+      <textarea id="rr" style="width:100%; min-height:74px; margin-top:6px; padding:8px; border:1px solid var(--line-strong); border-radius:var(--radius); background:var(--surface)">Сума рядків не збігається із сумою без ПДВ. Просимо надіслати виправлений примірник.</textarea>`,
+      `<button class="btn danger" data-closemodal="1">Повернути постачальнику</button><button class="btn" data-closemodal="1">Скасувати</button>`);
+    return;
+  }
+
+  const v = hit("[data-view]"); if (v) { S.view = v.dataset.view; S.bulk.clear(); return render(); }
+  if (hit("[data-density]")) { S.density = S.density === "dense" ? "normal" : "dense"; return render(); }
+  const pr = hit("[data-pickrow]"); if (pr) { const k = pr.dataset.pickrow; S.bulk.has(k) ? S.bulk.delete(k) : S.bulk.add(k); return render(); }
+  const bk = hit("[data-bulk]"); if (bk) {
+    const a = bk.dataset.bulk;
+    if (a === "none") S.bulk.clear();
+    else if (a === "all" || a === "page") REGISTRY.forEach(r => S.bulk.add(r.doc));
+    else if (a === "post") { toast("Проведено <b>22</b>, пропущено <b>2</b> — немає прав на базу «Буд-Альянс». <a href=\"#\" style=\"color:inherit\">Показати пропущені</a>"); S.bulk.clear(); }
+    else if (a === "orig") { toast("Підготовлено <b>24</b> листи-нагадування. Надсилання — після вашого підтвердження."); S.bulk.clear(); }
+    else { toast("Файл <b>реєстр_08-2026.xlsx</b> сформовано."); }
+    return render();
+  }
+
+  const bnk = hit("[data-bank]"); if (bnk) { S.bankSel = bnk.dataset.bank; return render(); }
+  if (hit("[data-bank-ok]")) { toast("Рознесено. У BAS створено рух по рахунку — <b>чернетка</b>, проводить головний бухгалтер.", () => toast("Рознесення скасовано.")); return; }
+  const bp = hit("[data-bank-pick]"); if (bp) { toast("Платіж зіставлено з <b>рахунком № 1204</b>. Вибір збережено як правило для цього контрагента."); return; }
+  if (hit("[data-ask-client]")) { toast("Запит клієнту сформовано. Лист відкриється в чернетках — надсилаєте ви."); return; }
+
+  const ac = hit("[data-act]"); if (ac) { S.actSel = +ac.dataset.act; return render(); }
+  if (hit("[data-send-act]")) {
+    modal("Надіслати акт звірки", `<dl>
+      <div class="frow"><dt>Кому</dt><dd>ТОВ «Епіцентр К» · buh@epicentrk.ua</dd></div>
+      <div class="frow"><dt>Канал</dt><dd>Вчасно.ЕДО — з накладенням КЕП</dd></div>
+      <div class="frow"><dt>Період</dt><dd>01.07 — 31.08.2026</dd></div>
+      <div class="frow"><dt>Сальдо в акті</dt><dd class="num">42 180,00 ₴</dd></div>
+    </dl><div class="note warn" style="margin-top:12px"><b>Три розбіжності не закриті.</b> Якщо надіслати зараз, контрагент побачить сальдо, яке ви самі ще не підтвердили.</div>`,
+      `<button class="btn" data-closemodal="1">Спершу закрити розбіжності</button><button class="btn primary" data-closemodal="1">Усе одно надіслати</button>`);
+    return;
+  }
+  if (hit("[data-approve-mails]")) {
+    modal("Нагадування постачальникам — 6 листів", `<p style="margin:0 0 11px; color:var(--ink-2)">Кожен лист відкривається для правки. Надсилання — одне рішення на весь пакет або поштучно.</p>
+      <div class="note" style="margin-bottom:9px"><b>ТОВ «Ашан Україна» · РН-0004702</b><br>«Доброго дня! Нагадуємо про оригінал видаткової накладної № РН-0004702 від 18.08.2026 на суму 22 415,30 грн…»<div style="margin-top:7px; display:flex; gap:7px"><button class="btn sm">Редагувати</button><button class="btn sm">Виключити</button></div></div>
+      <div class="note"><b>ТОВ «Оптіма-Фарм» · ОП-3391</b><br>«Доброго дня! Нагадуємо про оригінал видаткової накладної № ОП-3391 від 20.08.2026 на суму 154 900,00 грн…»<div style="margin-top:7px; display:flex; gap:7px"><button class="btn sm">Редагувати</button><button class="btn sm">Виключити</button></div></div>
+      <p style="color:var(--ink-3); font-size:12px; margin:11px 0 0">Ліміт: не більше одного листа на контрагента на тиждень — повторне нагадування «Ашану» піде 04.09.</p>`,
+      `<button class="btn primary" data-closemodal="1">Надіслати 6 листів</button><button class="btn" data-closemodal="1">Скасувати</button>`);
+    return;
+  }
+
+  const lvl = hit("[data-lvl]"); if (lvl) {
+    const [k, n] = lvl.dataset.lvl.split(":"); const a = AUTOS.find(x => x.key === k);
+    a.lvl = +n; render();
+    toast(`«${esc(a.name)}» — рівень <b>${["", "радить", "з підтвердженням", "робить сама"][+n]}</b>. Зміна записана в історію налаштувань.`);
+    return;
+  }
+  const tg = hit("[data-toggle]"); if (tg) { const a = AUTOS.find(x => x.key === tg.dataset.toggle); a.on = !a.on; render(); toast(`«${esc(a.name)}» ${a.on ? "увімкнено" : "вимкнено"}.`); return; }
+  const rs = hit("[data-runsearch]"); if (rs) { S.runQuery = rs.dataset.runsearch; return render(); }
+  const rr = hit("[data-retry-run]"); if (rr) {
+    modal("Повторити запуск № 8901", `<div class="note ${rr.dataset.retryRun === "orig" ? "info" : "warn"}" style="margin-bottom:12px">
+      ${rr.dataset.retryRun === "orig"
+        ? "Повтор <b>з вихідними даними</b>: система візьме той самий документ у тому вигляді, в якому він був о 08:54, і пройде кроки заново."
+        : "Повтор <b>з поточною версією</b>: документ буде взято в теперішньому стані, з усіма правками після падіння."}</div>
+      <div class="note"><b>Дубля не буде.</b> Перевірка за ключем <span class="num">budal|32490244|ВН|2209/1|2026-08-27</span> виконується перед створенням. Якщо документ уже з'явився в BAS — запуск завершиться зі статусом «уже виконано».</div>`,
+      `<button class="btn primary" data-closemodal="1">Повторити</button><button class="btn" data-closemodal="1">Скасувати</button>`);
+    return;
+  }
+  if (hit("[data-run]")) { toast("Розбір запуску показано нижче в картці."); return; }
+
+  const st = hit("[data-retry]"); if (st) { S.states[st.dataset.retry] = "ok"; return render(); }
+  if (hit("[data-ask]")) { toast("Запит на доступ надіслано <b>Богдану К.</b> (головний бухгалтер)."); return; }
+
+  const dm = hit("[data-demo]"); if (dm) {
+    if (dm.dataset.demo === "stop") return demoStop();
+    if (dm.dataset.demo === "next") { clearTimeout(demoTimer); return demoStep(demoIx + 1); }
+    clearTimeout(demoTimer); return demoStep(Math.max(0, demoIx - 1));
+  }
+  if (hit("#demobtn")) return demoStep(0);
+
+  if (hit("#themebtn")) {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const next = cur === "dark" ? "light" : cur === "light" ? null : "dark";
+    if (next) document.documentElement.setAttribute("data-theme", next);
+    else document.documentElement.removeAttribute("data-theme");
+    toast(`Тема: <b>${next === "dark" ? "темна" : next === "light" ? "світла" : "як у системі"}</b>.`);
+    return;
+  }
+  if (hit("#kill")) {
+    S.killed = !S.killed;
+    if (S.killed) toast("<b>Автоматику зупинено.</b> Приймання працює, проведення й розсилка — ні.", () => { S.killed = false; render(); });
+    else toast("Автоматику увімкнено. Черга обробиться протягом 5 хвилин.");
+    return render();
+  }
+  if (hit("#clientpick")) {
+    const ix = ["all", ...CLIENTS.map(c => c.id)].indexOf(S.client);
+    const list = ["all", ...CLIENTS.map(c => c.id)];
+    S.client = list[(ix + 1) % list.length];
+    return render();
+  }
+  if (hit("#rolepick")) {
+    S.role = S.role === "operator" ? "chief" : "operator";
+    S.screen = S.role === "operator" ? "queue" : "dashboard";
+    render();
+    toast(S.role === "operator" ? "Роль: <b>оператор вводу</b>. Стартовий екран — черга на перевірку." : "Роль: <b>головний бухгалтер</b>. Стартовий екран — панель.");
+    return;
+  }
+});
+
+document.addEventListener("input", e => {
+  if (e.target.id === "runq") { S.runQuery = e.target.value; const v = e.target.value, p = e.target.selectionStart; render(); const n = $("#runq"); if (n) { n.focus(); n.setSelectionRange(p, p); } }
+});
+document.addEventListener("change", e => {
+  const s = e.target.closest("[data-state]");
+  if (s) { S.states[s.dataset.state] = s.value; render(); }
+});
+document.addEventListener("focusin", e => {
+  const f = e.target.closest("[data-hl]");
+  if (f && S.screen === "verify") { S.verifyHl = f.dataset.hl; const el = $(".hl-" + f.dataset.hl); document.querySelectorAll(".scan .hl").forEach(x => x.classList.remove("hl")); if (el) el.classList.add("hl"); }
+});
+
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); $("#gsearch").focus(); return; }
+  if (e.key === "Escape") {
+    const overlay = $("#popholder").innerHTML || $("#modalholder").innerHTML;
+    closePop(); closeModal();
+    if (!overlay && S.screen === "verify") go("queue");
+    return;
+  }
+  const aiEl = e.target.closest && e.target.closest(".ai");
+  if (aiEl && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); e.stopPropagation(); openPop(aiEl, aiEl.dataset.ai); return; }
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && S.screen === "verify") { e.preventDefault(); return approvalGate(); }
+  if (typing) return;
+
+  if (S.screen === "queue") {
+    const list = QUEUE.filter(d => d.seg === S.seg);
+    const i = list.findIndex(d => d.id === S.sel);
+    if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); S.sel = list[Math.min(i + 1, list.length - 1)].id; return render(); }
+    if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); S.sel = list[Math.max(i - 1, 0)].id; return render(); }
+    if (e.key === "Enter") { e.preventDefault(); return go("verify"); }
+    if (e.key.toLowerCase() === "s" && list[i]) {
+      const d = list[i], was = d.seg; d.seg = "snoozed"; render();
+      toast(`<b>${esc(d.doc)}</b> відкладено до завтра, 09:00.`, () => { d.seg = was; render(); });
+      return;
+    }
+  }
+  const keys = { "1": "queue", "2": "bank", "3": "registry", "4": "originals", "5": "acts", "6": "automation", "7": "dashboard" };
+  if (keys[e.key]) go(keys[e.key]);
+});
+
+document.addEventListener("click", e => { if (e.target.id === "confirmbtn" && !S.posted) approvalGate(); });
+
+render();
+</script>
+<!--ARTIFACT:END-->
+</body>
+</html>

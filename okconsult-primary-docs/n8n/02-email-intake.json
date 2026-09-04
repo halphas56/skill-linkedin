@@ -1,0 +1,192 @@
+{
+  "name": "Первинка 02 — Приймання документів з пошти",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Пошта → поля (архетип 9: email-to-DB intake)\n\nСкладність тут не в моделі, а в транспорті. Порядок кроків не можна міняти місцями:\n1. Відповісти 200 одразу — інакше провайдер повторить доставку.\n2. Дедуп за Message-ID ДО обробки.\n3. SPF/DKIM/DMARC — лист найменш довірений вхід із усіх.\n4. Вкладення: тип проти розширення + ліміт розміру + скан.\n5. Чистка цитат і підписів готовою бібліотекою, не своїм regex.\n6. Тільки після цього — LLM, і текст листа передається як ДАНІ, не як інструкції.",
+        "height": 300,
+        "width": 560
+      },
+      "id": "b0000000-0000-4000-8000-000000000001",
+      "name": "Порядок кроків має значення",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-340, -300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "docs-intake-4b71c9",
+        "responseMode": "responseNode",
+        "options": { "rawBody": false }
+      },
+      "id": "b0000000-0000-4000-8000-000000000002",
+      "name": "Вебхук — inbound parse",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-340, 40],
+      "webhookId": "b0000000-0000-4000-8000-000000000002",
+      "notes": "MX поддомену docs.ok-consult.ua заведено на inbound-parse провайдера (Mailgun/SendGrid/Postmark). Провайдер уже розібрав MIME."
+    },
+    {
+      "parameters": { "respondWith": "text", "responseBody": "ok", "options": {} },
+      "id": "b0000000-0000-4000-8000-000000000003",
+      "name": "200 одразу",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-120, 40]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Валідація структури + автентифікація відправника + анти-loop.\nconst SECRET = $env.INBOUND_SHARED_SECRET;\nconst out = [];\nfor (const item of $input.all()) {\n  const b = item.json.body ?? item.json;\n  if (SECRET && item.json.headers?.['x-intake-secret'] !== SECRET) {\n    throw new Error('Невірний shared secret вебхука приймання пошти');\n  }\n  const messageId = String(b['Message-Id'] ?? b.message_id ?? '').trim();\n  if (!messageId) throw new Error('Лист без Message-ID — дедуп неможливий, у DLQ');\n\n  const auth = String(b['Authentication-Results'] ?? b.auth_results ?? '');\n  const spf = /spf=pass/i.test(auth), dkim = /dkim=pass/i.test(auth), dmarc = /dmarc=pass/i.test(auth);\n\n  // Анти-loop: автовідповіді й no-reply у роботу не беремо.\n  const autoSubmitted = String(b['Auto-Submitted'] ?? '').toLowerCase();\n  const subject = String(b.subject ?? '');\n  const isAuto = (autoSubmitted && autoSubmitted !== 'no')\n    || /out of office|automatic reply|автовідповідь|автоответ/i.test(subject);\n\n  out.push({ json: {\n    message_id: messageId,\n    from: String(b.from ?? b.sender ?? '').toLowerCase(),\n    subject,\n    text: String(b['stripped-text'] ?? b.text ?? ''),\n    html: String(b['stripped-html'] ?? b.html ?? ''),\n    attachments: b.attachments ?? [],\n    auth: { spf, dkim, dmarc, trusted: spf && dkim && dmarc },\n    is_auto: isAuto\n  }});\n}\nreturn out;"
+      },
+      "id": "b0000000-0000-4000-8000-000000000004",
+      "name": "Валідація, SPF/DKIM/DMARC, анти-loop",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [100, 40],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into processed_sources (source, external_id)\nvalues ('email', $1)\non conflict (source, external_id) do nothing\nreturning external_id;",
+        "options": { "queryReplacement": "={{ $json.message_id }}" }
+      },
+      "id": "b0000000-0000-4000-8000-000000000005",
+      "name": "Дедуп за Message-ID",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [320, 40],
+      "alwaysOutputData": true,
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose", "version": 2 },
+          "combinator": "and",
+          "conditions": [
+            { "id": "c1", "leftValue": "={{ $json.external_id }}", "rightValue": "", "operator": { "type": "string", "operation": "exists", "singleValue": true } }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b0000000-0000-4000-8000-000000000006",
+      "name": "Лист новий?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [540, 40]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Перевірка вкладень і підготовка тексту для екстракції.\nconst ALLOWED = { 'application/pdf': ['pdf'], 'image/jpeg': ['jpg','jpeg'], 'image/png': ['png'], 'application/xml': ['xml'], 'text/xml': ['xml'] };\nconst MAX_MB = 20;\nconst mail = $('Валідація, SPF/DKIM/DMARC, анти-loop').first().json;\nconst files = [], rejected = [];\n\nfor (const a of mail.attachments) {\n  const ext = String(a.filename ?? '').split('.').pop().toLowerCase();\n  const type = String(a.content_type ?? a.type ?? '').split(';')[0].trim();\n  const mb = Number(a.size ?? 0) / 1048576;\n  if (!ALLOWED[type]) { rejected.push({ f: a.filename, why: 'тип ' + type + ' не приймається' }); continue; }\n  if (!ALLOWED[type].includes(ext)) { rejected.push({ f: a.filename, why: 'розширення не відповідає MIME-типу' }); continue; }\n  if (mb > MAX_MB) { rejected.push({ f: a.filename, why: 'більше ' + MAX_MB + ' МБ' }); continue; }\n  files.push({ filename: a.filename, type, url: a.url ?? a.link, needs_ocr: type.startsWith('image/') });\n}\n\nif (!files.length) {\n  return [{ json: { ...mail, decision: 'dlq', reason: 'Жодного придатного вкладення', rejected } }];\n}\n\n// Тіло листа вже почищене провайдером (stripped-text). Додатковий проходження\n// email-reply-parser робиться в сервісі extractor — тут лише обрізаємо хвости.\nconst body = mail.text.split(/\\n-{2,}\\s*(Original Message|Пересланное сообщение|Переслане повідомлення)/i)[0].trim().slice(0, 4000);\n\nreturn [{ json: { ...mail, body, files, rejected, decision: 'extract' } }];"
+      },
+      "id": "b0000000-0000-4000-8000-000000000007",
+      "name": "Вкладення й чистка тіла",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, -60]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EXTRACTOR_URL }}/extract",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ files: $json.files, ocr: true }) }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "b0000000-0000-4000-8000-000000000008",
+      "name": "OCR-сервіс — текст зі скану",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, -60],
+      "notes": "Гібрид OCR+LLM: на сканах чистий LLM гірший за LLM поверх OCR-тексту. PDF з текстовим шаром OCR не проходить."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 4096, system: $env.PROMPT_EXTRACT, messages: [{ role: 'user', content: '<document_text>\\n' + $json.text + '\\n</document_text>' }], output_config: { format: { type: 'json_schema', schema: $env.SCHEMA_EXTRACT ? JSON.parse($env.SCHEMA_EXTRACT) : {} } } }) }}",
+        "options": { "timeout": 120000, "retry": { "retry": { "maxTries": 3, "waitBetweenTries": 2000 } } }
+      },
+      "id": "b0000000-0000-4000-8000-000000000009",
+      "name": "Claude — витяг полів",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, -60],
+      "credentials": { "httpHeaderAuth": { "id": "REPLACE_AFTER_IMPORT", "name": "Anthropic API (x-api-key)" } },
+      "notes": "Модель тут виконує СПРИЙНЯТТЯ: прочитати й витягти. Жодних рішень (рахунок, проведення) вона не ухвалює."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Розбір відповіді моделі + оцінка впевненості + природний ключ.\nconst mail = $('Вкладення й чистка тіла').first().json;\nconst raw = $input.first().json;\nlet data;\ntry {\n  data = JSON.parse(raw.content?.[0]?.text ?? '{}');\n} catch (e) {\n  return [{ json: { decision: 'dlq', reason: 'Модель повернула невалідний JSON', raw } }];\n}\n\nconst need = ['doc_type','doc_number','doc_date','counterparty_edrpou','amount_total'];\nconst missing = need.filter(k => !data[k]);\nconst lines = data.lines ?? [];\nconst sumLines = lines.reduce((a, l) => a + Number(l.amount || 0), 0);\nconst base = Number(data.amount_base || 0);\nconst arithOk = Math.abs(sumLines - base) <= 0.02;\n\nlet confidence = 'high';\nif (missing.length) confidence = 'low';\nelse if (!arithOk || Number(data.ocr_quality ?? 1) < 0.8) confidence = 'medium';\n\nconst key = [data.client_id ?? mail.client_id ?? 'unknown', data.counterparty_edrpou, data.doc_type, data.doc_number, data.doc_date].join('|');\n\nreturn [{ json: {\n  client_id: data.client_id ?? null,\n  source: 'email',\n  source_ref: mail.message_id,\n  natural_key: key,\n  doc_type: data.doc_type,\n  doc_number: data.doc_number,\n  doc_date: data.doc_date,\n  cp_edrpou: data.counterparty_edrpou,\n  cp_name: data.counterparty_name,\n  amount_base: base,\n  amount_vat: Number(data.amount_vat || 0),\n  amount_total: Number(data.amount_total || 0),\n  lines,\n  confidence,\n  arith_ok: arithOk,\n  missing,\n  trusted_sender: mail.auth.trusted,\n  extracted: { channel: 'email-llm', model: 'claude-haiku-4-5', received_at: new Date().toISOString() }\n}}];"
+      },
+      "id": "b0000000-0000-4000-8000-00000000000a",
+      "name": "Розбір відповіді й впевненість",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1420, -60]
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "value": "REPLACE_WITH_WF_03_ID", "mode": "id" },
+        "workflowInputs": { "mappingMode": "defineBelow", "value": {} },
+        "options": { "waitForSubWorkflow": false }
+      },
+      "id": "b0000000-0000-4000-8000-00000000000b",
+      "name": "Зіставлення та рішення (03)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1640, -60]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into failed_events (source, external_id, payload, error)\nvalues ('email', $1, $2::jsonb, $3);",
+        "options": { "queryReplacement": "={{ $json.message_id ?? $json.source_ref ?? 'unknown' }},{{ JSON.stringify($json) }},{{ $json.reason ?? 'Не вдалося обробити лист' }}" }
+      },
+      "id": "b0000000-0000-4000-8000-00000000000c",
+      "name": "DLQ — нічого не зникає мовчки",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [980, 200],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {},
+      "id": "b0000000-0000-4000-8000-00000000000d",
+      "name": "Дубль листа — вихід",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [760, 140]
+    }
+  ],
+  "connections": {
+    "Вебхук — inbound parse": { "main": [[{ "node": "200 одразу", "type": "main", "index": 0 }]] },
+    "200 одразу": { "main": [[{ "node": "Валідація, SPF/DKIM/DMARC, анти-loop", "type": "main", "index": 0 }]] },
+    "Валідація, SPF/DKIM/DMARC, анти-loop": { "main": [[{ "node": "Дедуп за Message-ID", "type": "main", "index": 0 }], [{ "node": "DLQ — нічого не зникає мовчки", "type": "main", "index": 0 }]] },
+    "Дедуп за Message-ID": { "main": [[{ "node": "Лист новий?", "type": "main", "index": 0 }]] },
+    "Лист новий?": { "main": [[{ "node": "Вкладення й чистка тіла", "type": "main", "index": 0 }], [{ "node": "Дубль листа — вихід", "type": "main", "index": 0 }]] },
+    "Вкладення й чистка тіла": { "main": [[{ "node": "OCR-сервіс — текст зі скану", "type": "main", "index": 0 }]] },
+    "OCR-сервіс — текст зі скану": { "main": [[{ "node": "Claude — витяг полів", "type": "main", "index": 0 }]] },
+    "Claude — витяг полів": { "main": [[{ "node": "Розбір відповіді й впевненість", "type": "main", "index": 0 }]] },
+    "Розбір відповіді й впевненість": { "main": [[{ "node": "Зіставлення та рішення (03)", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateCredsSetupCompleted": false }
+}

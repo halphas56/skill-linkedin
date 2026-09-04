@@ -1,0 +1,138 @@
+# Первинка — self-hosted стек. Дані бухобліку кількох юросіб не мають
+# залишати контур клієнта, тому n8n Cloud тут не підходить.
+#
+#   docker compose up -d
+#
+# Перед першим запуском: cp .env.example .env і заповнити реальні значення.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+    # Порт назовні не публікуємо: до бази ходять тільки сервіси цієї мережі.
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      # Ключ шифрування credentials. Бекапиться ОКРЕМО від бази —
+      # без нього дамп бази марний, разом із ним він рівносильний усім паролям.
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      N8N_HOST: ${N8N_HOST}
+      N8N_PROTOCOL: https
+      WEBHOOK_URL: https://${N8N_HOST}/
+      GENERIC_TIMEZONE: Europe/Kyiv
+      TZ: Europe/Kyiv
+      # Історію виконань тримаємо 90 днів — рівно стільки, скільки обіцяє
+      # екран «Історія запусків». Обіцянка в UI і налаштування мають збігатися.
+      EXECUTIONS_DATA_MAX_AGE: 2160
+      EXECUTIONS_DATA_PRUNE: "true"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      P24_CLIENT_ID: ${P24_CLIENT_ID}
+      P24_TOKEN: ${P24_TOKEN}
+      P24_IBAN: ${P24_IBAN}
+      ALERT_CHAT_ID: ${ALERT_CHAT_ID}
+      INBOUND_SHARED_SECRET: ${INBOUND_SHARED_SECRET}
+      EXTRACTOR_URL: http://extractor:8080
+      AUTO_LIMIT_UAH: ${AUTO_LIMIT_UAH}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks: [internal, web]
+
+  n8n-worker:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    command: worker
+    depends_on:
+      n8n: { condition: service_started }
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      GENERIC_TIMEZONE: Europe/Kyiv
+      TZ: Europe/Kyiv
+      EXTRACTOR_URL: http://extractor:8080
+      AUTO_LIMIT_UAH: ${AUTO_LIMIT_UAH}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks: [internal]
+    deploy:
+      replicas: 2
+
+  # OCR для сканів і фото. PDF з текстовим шаром сюди не потрапляє —
+  # гібрид OCR+LLM точніший за чистий LLM на сканах, але дорожчий, тому
+  # застосовується тільки там, де без нього не обійтися.
+  extractor:
+    image: hertzg/tesseract-server:latest
+    restart: unless-stopped
+    environment:
+      TESSERACT_LANGS: ukr+rus+eng
+    networks: [internal]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      N8N_HOST: ${N8N_HOST}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [web]
+
+volumes:
+  pg_data:
+  redis_data:
+  n8n_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  # Без internal:true — воркерам потрібен вихід до api.anthropic.com, vchasno.ua
+  # і бази клієнта. Ізоляція тут забезпечується тим, що порти назовні публікує
+  # лише caddy, а postgres/redis не мають ports взагалі.
+  internal:
+  web:

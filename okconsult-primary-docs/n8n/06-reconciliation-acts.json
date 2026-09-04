@@ -1,0 +1,155 @@
+{
+  "name": "Первинка 06 — Акти звірок",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Акт звірки з розбіжностями по документах\n\nЦінність не в тому, щоб «сформувати акт» — це вміє й сама 1С.\nЦінність у тому, що система порівнює НАШ перелік документів із переліком контрагента\nі показує, який саме документ у кого відсутній. Це те, що бухгалтер зараз робить очима.\n\nНадсилання — завжди за гейтом: акт іде зовнішній стороні від імені клієнта.\nАвтономія цієї автоматизації за замовчуванням = 1 («радить»).",
+        "height": 260,
+        "width": 560
+      },
+      "id": "f0000000-0000-4000-8000-000000000001",
+      "name": "Де тут цінність",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-340, -260]
+    },
+    {
+      "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 6 1 * *" }] } },
+      "id": "f0000000-0000-4000-8000-000000000002",
+      "name": "1 числа о 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-340, 40]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Контрагенти з оборотом за період: з ким узагалі є що звіряти.\nselect c.id as client_id, c.odata_base_url, cp.id as cp_id, cp.name as cp_name,\n       cp.edrpou, cp.email_docs, cp.one_c_ref as cp_ref,\n       date_trunc('month', now() - interval '2 months')::date as period_from,\n       (date_trunc('month', now()) - interval '1 day')::date as period_to\nfrom clients c\njoin counterparties cp on cp.client_id = c.id\njoin documents d on d.counterparty_id = cp.id\nwhere c.active and d.doc_date >= date_trunc('month', now() - interval '2 months')\ngroup by c.id, c.odata_base_url, cp.id\nhaving count(d.id) > 0;",
+        "options": {}
+      },
+      "id": "f0000000-0000-4000-8000-000000000003",
+      "name": "Пари клієнт — контрагент",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [-120, 40],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.odata_base_url }}/AccumulationRegister_ВзаиморасчетыСКонтрагентами/Balance",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "$format", "value": "application/json" },
+            { "name": "Period", "value": "={{ \"datetime'\" + $json.period_to + \"T23:59:59'\" }}" },
+            { "name": "Condition", "value": "={{ \"Контрагент_Key eq guid'\" + $json.cp_ref + \"'\" }}" }
+          ]
+        },
+        "options": { "timeout": 60000 }
+      },
+      "id": "f0000000-0000-4000-8000-000000000004",
+      "name": "BAS — сальдо взаєморозрахунків",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [100, 40],
+      "credentials": { "httpBasicAuth": { "id": "REPLACE_AFTER_IMPORT", "name": "BAS OData · користувач інтеграції" } },
+      "onError": "continueRegularOutput",
+      "notes": "Назва регістру залежить від конфігурації (БП/УТ/КА). Звірити через $metadata перед запуском. Якщо регістр недоступний по OData — рахувати сальдо за нашою таблицею documents."
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select doc_type, doc_number, doc_date, amount_total, status\nfrom documents\nwhere client_id = $1 and counterparty_id = $2 and doc_date between $3::date and $4::date\norder by doc_date;",
+        "options": { "queryReplacement": "={{ $('Пари клієнт — контрагент').item.json.client_id }},{{ $('Пари клієнт — контрагент').item.json.cp_id }},{{ $('Пари клієнт — контрагент').item.json.period_from }},{{ $('Пари клієнт — контрагент').item.json.period_to }}" }
+      },
+      "id": "f0000000-0000-4000-8000-000000000005",
+      "name": "Наш перелік документів",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [320, 40],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Порівняння документ до документа. Ніякої моделі: це арифметика й теорія множин.\nconst meta = $('Пари клієнт — контрагент').first().json;\nlet ourBalance = 0;\ntry {\n  const bal = $('BAS — сальдо взаєморозрахунків').first().json;\n  ourBalance = Number((bal.value ?? [])[0]?.СуммаBalance ?? 0);\n} catch (e) { ourBalance = 0; }\n\nconst ours = $input.all().map(i => i.json);\nourBalance = ourBalance || Number(ours.reduce((a, d) => a + Number(d.amount_total || 0), 0).toFixed(2));\n\n// Перелік контрагента приходить пізніше — коли він підпише або надішле свій акт.\n// На цьому кроці фіксуємо своє й позначаємо розбіжності всередині власних даних.\nconst discrepancies = [];\nfor (const d of ours) {\n  if (d.status === 'error') discrepancies.push({ side: 'us', doc: d.doc_type + ' № ' + d.doc_number, amount: Number(d.amount_total), note: 'Документ не проведено — помилка обробки' });\n  if (d.status === 'review') discrepancies.push({ side: 'us', doc: d.doc_type + ' № ' + d.doc_number, amount: Number(d.amount_total), note: 'Документ ще на перевірці, у сальдо не врахований' });\n}\n\nreturn [{ json: {\n  client_id: meta.client_id,\n  counterparty_id: meta.cp_id,\n  cp_name: meta.cp_name,\n  cp_email: meta.email_docs,\n  period_from: meta.period_from,\n  period_to: meta.period_to,\n  our_balance: ourBalance,\n  documents: ours,\n  discrepancies,\n  status: discrepancies.length ? 'disputed' : 'draft'\n}}];"
+      },
+      "id": "f0000000-0000-4000-8000-000000000006",
+      "name": "Сальдо й розбіжності",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [540, 40]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into reconciliation_acts (client_id, counterparty_id, period_from, period_to, our_balance, discrepancies, status)\nvalues ($1,$2,$3::date,$4::date,$5,$6::jsonb,$7)\non conflict (client_id, counterparty_id, period_from, period_to)\ndo update set our_balance = excluded.our_balance, discrepancies = excluded.discrepancies, status = excluded.status\nreturning id, status;",
+        "options": { "queryReplacement": "={{ $json.client_id }},{{ $json.counterparty_id }},{{ $json.period_from }},{{ $json.period_to }},{{ $json.our_balance }},{{ JSON.stringify($json.discrepancies) }},{{ $json.status }}" }
+      },
+      "id": "f0000000-0000-4000-8000-000000000007",
+      "name": "Записати акт",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [760, 40],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose", "version": 2 },
+          "combinator": "and",
+          "conditions": [
+            { "id": "c1", "leftValue": "={{ $json.status }}", "rightValue": "draft", "operator": { "type": "string", "operation": "equals" } }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f0000000-0000-4000-8000-000000000008",
+      "name": "Розбіжностей немає?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [980, 40]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Акт готовий, але НЕ надісланий. Це окремий явний стан частково виконаного процесу:\n-- в інтерфейсі він читається як «Сформовано, не надіслано», а не як «Надіслано».\ninsert into automation_runs (automation_key, client_id, trigger_mode, entity_type, entity_id, entity_label, status, error_human, finished_at)\nvalues ('acts', $1, 'schedule', 'act', $2, $3, 'waiting_human', 'Акт сформовано. Надсилання контрагенту потребує підтвердження людини.', now());",
+        "options": { "queryReplacement": "={{ $('Сальдо й розбіжності').first().json.client_id }},{{ $json.id }},{{ $('Сальдо й розбіжності').first().json.cp_name + ' · ' + $('Сальдо й розбіжності').first().json.period_from }}" }
+      },
+      "id": "f0000000-0000-4000-8000-000000000009",
+      "name": "У чергу підтверджень",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1200, -60],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into activity (client_id, entity_type, entity_id, actor_type, actor_name, action, result)\nvalues ($1, 'act', $2, 'automation', 'Акти звірок', $3, 'потребує рішення бухгалтера до надсилання');",
+        "options": { "queryReplacement": "={{ $('Сальдо й розбіжності').first().json.client_id }},{{ $json.id }},{{ 'знайшла ' + $('Сальдо й розбіжності').first().json.discrepancies.length + ' розбіжн. в акті з ' + $('Сальдо й розбіжності').first().json.cp_name }}" }
+      },
+      "id": "f0000000-0000-4000-8000-00000000000a",
+      "name": "Розбіжності — у стрічку",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1200, 160],
+      "credentials": { "postgres": { "id": "REPLACE_AFTER_IMPORT", "name": "Первинка · Postgres" } }
+    }
+  ],
+  "connections": {
+    "1 числа о 06:00": { "main": [[{ "node": "Пари клієнт — контрагент", "type": "main", "index": 0 }]] },
+    "Пари клієнт — контрагент": { "main": [[{ "node": "BAS — сальдо взаєморозрахунків", "type": "main", "index": 0 }]] },
+    "BAS — сальдо взаєморозрахунків": { "main": [[{ "node": "Наш перелік документів", "type": "main", "index": 0 }]] },
+    "Наш перелік документів": { "main": [[{ "node": "Сальдо й розбіжності", "type": "main", "index": 0 }]] },
+    "Сальдо й розбіжності": { "main": [[{ "node": "Записати акт", "type": "main", "index": 0 }]] },
+    "Записати акт": { "main": [[{ "node": "Розбіжностей немає?", "type": "main", "index": 0 }]] },
+    "Розбіжностей немає?": { "main": [[{ "node": "У чергу підтверджень", "type": "main", "index": 0 }], [{ "node": "Розбіжності — у стрічку", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": { "templateCredsSetupCompleted": false }
+}
